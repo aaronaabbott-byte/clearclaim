@@ -56,6 +56,60 @@ export function checkClaim(c) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Co-curricular course checklist (Arkansas EFA, 6 CAR § 35-102).
+// A class must meet ALL ten requirements to be approved as co-curricular.
+// Each requirement pairs with the document a family can send in as evidence.
+// ---------------------------------------------------------------------------
+export const COCURRICULAR = {
+  source:
+    "6 CAR § 35-102 (Definitions). All expenses must also be ordinary and necessary under § 35-114 and § 35-115.",
+  intro:
+    "Use this before you enroll. A class must meet all ten requirements to be approved as a co-curricular course. Check each box and gather the matching document to send in with the expense.",
+  requirements: [
+    { id: "extends",   requirement: "It builds on or extends your student's main academic program",
+      doc: "A short note from you, or the page of your education plan, showing how this course fits your student's program for the year." },
+    { id: "academic",  requirement: "It contributes to your student's academic development",
+      doc: "The course description showing what skills or knowledge your student will gain." },
+    { id: "structured", requirement: "It teaches structured content in an instructional setting",
+      doc: "The class schedule plus a description of where it meets: classroom, studio, lab, or live online class." },
+    { id: "standards", requirement: "It lines up with academic standards, educational goals, or subject-area skills",
+      doc: "The part of the syllabus that lists the standards or skills covered, or the provider's written statement of what the course aligns to." },
+    { id: "noncore",   requirement: "It is not one of your student's required core subjects",
+      doc: "Your education plan or school course list showing this course is in addition to the core subjects." },
+    { id: "subject",   requirement: "It has a written academic connection to a recognized subject area",
+      doc: "The course title and description naming the subject, e.g. Dance, Spanish, or Computer Science." },
+    { id: "instructor", requirement: "The instructor knows the subject",
+      doc: "The instructor's bio, resume, degree, certification, or a short summary of their experience in the subject." },
+    { id: "design",    requirement: "It has real instructional design",
+      doc: "The syllabus, the written learning objectives, and a description of how students are graded or assessed — together showing what your student will know or be able to do by the end. A weekly list of skills to be practiced is not enough." },
+    { id: "plan",      requirement: "It supports the academic goals in your student's education plan or school curriculum",
+      doc: "The part of your education plan or your school's curriculum outline that includes this course." },
+    { id: "comparable", requirement: "It is the kind of course Arkansas public schools offer",
+      doc: "The name of the comparable public-school course, if you know it. If unsure, tell the program the subject and they will check." },
+  ],
+  warnings: [
+    "A document called a \"syllabus\" is not automatically enough. Many providers hand out a weekly schedule of skills — that says what the class will do, not what your student will learn or how anyone will know they learned it. Ask whether the document states learning objectives, connects to a subject area, and explains how progress is assessed. If not, the class is likely extracurricular.",
+    "One document often covers several rows. A complete syllabus with learning objectives, an assessment plan, and an instructor bio can satisfy most of this list on its own. Ask your provider for it before you enroll.",
+    "If your class cannot meet every requirement, it may still qualify. Structured classes without a syllabus or assessments are often approved as extracurricular activities instead — contact the program if you are unsure which category fits.",
+  ],
+};
+
+// Evaluate a co-curricular class against the checklist.
+// `checkedIds` is an array of requirement ids the family has confirmed.
+export function checkCocurricular(checkedIds) {
+  const ids = new Set(checkedIds || []);
+  const met = COCURRICULAR.requirements.filter(r => ids.has(r.id));
+  const missing = COCURRICULAR.requirements.filter(r => !ids.has(r.id));
+  return {
+    total: COCURRICULAR.requirements.length,
+    metCount: met.length,
+    missing,
+    qualifies: missing.length === 0,
+    likelyExtracurricular: !ids.has("design") || !ids.has("standards"),
+  };
+}
+
 export function draftReasoning(c, kid) {
   const nm = (kid && kid.first_name) || "my student";
   const gr = (kid && kid.grade) ? `grade-${kid.grade} ` : "";
