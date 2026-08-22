@@ -1,0 +1,15 @@
+{
+  "note": "ClassWallet upload constraints. Confirmed values only; unknowns are null until verified. Do not guess.",
+  "acceptedFormats": ["jpeg", "png", "pdf"],
+  "maxPagesPerFile": 5,
+  "maxFileSizeMB": null,
+  "maxFilesPerSubmission": null,
+  "combineAllowed": true,
+  "confirmed": {
+    "acceptedFormats": true,
+    "maxPagesPerFile": true,
+    "maxFileSizeMB": false,
+    "maxFilesPerSubmission": false,
+    "combineAllowed": false
+  }
+}
