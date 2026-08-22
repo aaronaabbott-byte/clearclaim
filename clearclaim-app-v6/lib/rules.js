@@ -36,15 +36,15 @@ export const FUNDING = {
 // 25% cap in dollars for a standard (non-Succeed) student this year.
 const CAP_25 = Math.round(FUNDING.nonSucceed.annual * 0.25); // ~$1,802
 
-// The Arkansas EFA budget year runs Aug 1 – Jul 31 (Q1 funds drop ~Aug 20).
+// The Arkansas EFA budget year runs Jul 1 – Jun 30.
 export function efaBudgetYear(dateStr) {
   const d = dateStr ? new Date(dateStr.length <= 10 ? dateStr + "T00:00:00" : dateStr) : new Date();
-  const y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1; // month 7 = August
+  const y = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1; // month 6 = July
   return {
     startYear: y,
     label: `${y}–${String((y + 1) % 100).padStart(2, "0")}`,
-    start: `${y}-08-01`,
-    end: `${y + 1}-07-31`,
+    start: `${y}-07-01`,
+    end: `${y + 1}-06-30`,
   };
 }
 export function claimDate(c) { return c.date || (c.created_at ? String(c.created_at).slice(0, 10) : null); }
@@ -206,13 +206,45 @@ export function checkCocurricular(checkedIds) {
   };
 }
 
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function ordinal(g) {
+  const n = parseInt(g, 10);
+  if (isNaN(n)) return String(g || "");
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Smart built-in generator: specific, concrete, 2–3 sentences tuned to the
+// category. Kept short on purpose — reviewers dislike generic "benefits of X" essays.
 export function draftReasoning(c, kid) {
   const nm = (kid && kid.first_name) || "my student";
-  const gr = (kid && kid.grade) ? `grade-${kid.grade} ` : "";
+  const gradePhrase = (kid && kid.grade) ? `${ordinal(kid.grade)}-grade ` : "";
   const setting = (kid && kid.setting) || "homeschool";
-  const items = c.items ? ` — including ${c.items.split(/[,;\n]/).map(x=>x.trim()).filter(Boolean).slice(0,6).join(", ")}` : "";
-  const use = c.purpose ? ` ${c.purpose.trim().replace(/\.?$/,".")}` : "";
-  if (setting === "homeschool") return `These are curriculum and supplies for ${nm}'s ${gr}homeschool this year${items}. ${nm} uses them for daily lessons and coursework at home.${use}`;
-  const where = (kid && kid.school_name) ? ` at ${kid.school_name}` : "";
-  return `These are required materials for ${nm}'s ${gr}courses${where}${items}. Each is used for the classes ${nm} is enrolled in this year.${use}`;
+  const where = setting === "homeschool" ? "our homeschool"
+    : (kid && kid.school_name ? kid.school_name : "school");
+  const itemList = (c.items || "").split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+  const itemsPhrase = itemList.slice(0, 6).join(", ");
+  const subjects = (kid && kid.subjects) ? kid.subjects : "";
+  const cat = (c.category || "").toLowerCase();
+
+  let s1 = itemsPhrase
+    ? `${cap(itemsPhrase)} ${itemList.length > 1 ? "are" : "is"} for ${nm}'s ${gradePhrase}coursework in ${where}`
+    : `This expense is for ${nm}'s ${gradePhrase}coursework in ${where}`;
+  if (subjects) s1 += `, which this year covers ${subjects}`;
+  s1 += ".";
+
+  let s2;
+  if (cat.includes("curriculum")) s2 = `${nm} works through ${itemsPhrase ? "these texts" : "this curriculum"} as the core of daily lessons.`;
+  else if (cat.includes("technology")) s2 = `${nm} uses it for assignments, research, and online classes.`;
+  else if (cat.includes("supplies")) s2 = `${nm} uses ${itemsPhrase ? "these" : "these supplies"} in daily lessons and hands-on work.`;
+  else if (cat.includes("instrument")) s2 = `${nm} plays it for the music class ${nm} is enrolled in this year.`;
+  else if (cat.includes("co-curricular") || cat.includes("instructional")) s2 = `It supports the structured, graded course ${nm} is enrolled in this year.`;
+  else if (cat.includes("extra-curricular") || cat.includes("field") || cat.includes("travel") || cat.includes("mileage")) s2 = `It supports an approved activity that reinforces ${nm}'s learning this year.`;
+  else if (cat.includes("uniform")) s2 = `${nm} is required to wear it for ${where}.`;
+  else if (cat.includes("testing")) s2 = `It covers the standardized testing ${nm} is required to complete this year.`;
+  else if (cat.includes("tutoring")) s2 = `${nm} works with the tutor to strengthen these subjects.`;
+  else s2 = `${nm} uses ${itemsPhrase ? "these items" : "it"} directly for lessons and coursework this year.`;
+
+  const note = c.purpose ? " " + c.purpose.trim().replace(/\.?$/, ".") : "";
+  return `${s1} ${s2}${note}`;
 }

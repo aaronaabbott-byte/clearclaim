@@ -45,14 +45,36 @@ create table if not exists claims (
 -- If the claims table already exists from an earlier version, add the column:
 alter table claims add column if not exists files jsonb default '[]'::jsonb;
 
+-- Per-student course syllabi — documentation that proves educational use.
+create table if not exists syllabi (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kid_id uuid references kids(id) on delete cascade,
+  title text,                 -- course title, e.g. "5th-Grade Latin"
+  subject text,               -- subject area, e.g. "World Languages"
+  grade text,
+  term text,                  -- e.g. "2026-27"
+  instructor text,
+  description text,
+  objectives text,            -- learning objectives
+  standards text,             -- standards / skills alignment
+  materials text,             -- curriculum & materials used
+  schedule text,              -- week-by-week or unit plan
+  assessment text,            -- how progress is graded/assessed
+  status text default 'draft',
+  created_at timestamptz default now()
+);
+
 alter table kids    enable row level security;
 alter table vendors enable row level security;
 alter table claims  enable row level security;
+alter table syllabi enable row level security;
 
 -- owner-only access
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own syllabi" on syllabi for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Storage: create a PRIVATE bucket named 'documents' in the dashboard, then run
 -- these so each user can only touch files under a top-level folder named for their uid

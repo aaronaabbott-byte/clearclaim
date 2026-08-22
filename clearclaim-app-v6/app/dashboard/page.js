@@ -139,6 +139,7 @@ export default async function Dashboard() {
   const { data: kids } = await supabase.from("kids").select("*").order("created_at");
   const hasKids = kids && kids.length > 0;
   const { data: claims } = await supabase.from("claims").select("*").order("created_at", { ascending: false });
+  const { data: syllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term").order("created_at", { ascending: false });
   const kidName = (id) => (kids || []).find(k => k.id === id)?.first_name || "—";
   const money = (n) => (n || n === 0) ? `$${Number(n).toFixed(2)}` : "—";
   const STATUS = { ready: ["Ready", "var(--teal)"], draft: ["Draft", "var(--gold)"], submitted: ["Submitted", "var(--navy2)"] };
@@ -185,6 +186,36 @@ export default async function Dashboard() {
         </div>
 
         <div className="card"><h2>Add another student</h2><KidForm first={false} /></div>
+
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Syllabi</h2>
+            <span className="spacer" />
+            <Link href="/dashboard/syllabus/new"><button className="primary">+ Build a syllabus</button></Link>
+          </div>
+          {(!syllabi || syllabi.length === 0) ? (
+            <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
+              A course syllabus is the strongest proof of educational use. Build one per course —
+              objectives, standards, materials, schedule, and assessment — with an AI draft and a clean PDF.
+            </p>
+          ) : (
+            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+              {syllabi.map(s => (
+                <Link key={s.id} href={`/dashboard/syllabus/${s.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                  <div className="kid" style={{ alignItems: "center" }}>
+                    <div style={{ flex: 1 }}>
+                      <b>{s.title || s.subject || "Course"}</b>
+                      <div className="muted sans" style={{ fontSize: 13 }}>
+                        {kidName(s.kid_id)}{s.subject ? ` · ${s.subject}` : ""}{s.term ? ` · ${s.term}` : ""}
+                      </div>
+                    </div>
+                    <span className="sans" style={{ fontSize: 12.5, color: "var(--navy2)" }}>Open →</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         <CocurricularGuide />
 

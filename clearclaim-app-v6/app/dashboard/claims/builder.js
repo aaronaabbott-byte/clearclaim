@@ -25,6 +25,7 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
   const [receipts, setReceipts] = useState([]);   // File[]
   const [payments, setPayments] = useState([]);    // File[]
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
@@ -63,6 +64,28 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
       ...receipts.map(f => ({ kind: "Receipt", blob: f, name: f.name })),
       ...payments.map(f => ({ kind: "Bank charge", blob: f, name: f.name })),
     ];
+  }
+
+  async function improveWithAI() {
+    setErr(""); setMsg(""); setAiBusy(true);
+    try {
+      const res = await fetch("/api/reasoning", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ claim: { ...claim, reasoning: reasoning || suggested }, kid }),
+      });
+      const data = await res.json();
+      if (data.text) { setReasoning(data.text); setMsg("Reasoning rewritten with AI."); }
+      else {
+        setReasoning(data.fallback || suggested);
+        setMsg(data.reason === "no-key"
+          ? "AI isn't set up yet (no API key) — used a smart draft instead."
+          : "AI was unavailable — used a smart draft instead.");
+      }
+    } catch (e) {
+      setReasoning(suggested);
+      setMsg("AI was unavailable — used a smart draft instead.");
+    }
+    setAiBusy(false);
   }
 
   async function downloadPacket() {
@@ -171,8 +194,12 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
           placeholder="How this student uses these items in their classes." />
         <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
           <button type="button" className="sans" onClick={() => setReasoning(suggested)}>Use suggested wording</button>
-          <span className="muted sans" style={{ fontSize: 12.5, flex: 1, minWidth: 200 }}>
-            Suggestion: “{suggested.slice(0, 90)}{suggested.length > 90 ? "…" : ""}”
+          <button type="button" className="sans" onClick={improveWithAI} disabled={aiBusy}
+            style={{ borderColor: "var(--navy2)", color: "var(--navy2)" }}>
+            {aiBusy ? "Thinking…" : "✨ Improve with AI"}
+          </button>
+          <span className="muted sans" style={{ fontSize: 12.5, flex: 1, minWidth: 180 }}>
+            Suggestion: “{suggested.slice(0, 80)}{suggested.length > 80 ? "…" : ""}”
           </span>
         </div>
       </div>
