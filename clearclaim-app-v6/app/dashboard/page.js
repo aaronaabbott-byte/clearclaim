@@ -41,6 +41,14 @@ export default async function Dashboard() {
               nothing sensitive, no account or bank numbers. You can edit or add more anytime in Settings.
             </p>
             <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "left" }}><KidForm first /></div>
+            <p className="finenote" style={{ maxWidth: 560, margin: "18px auto 0" }}>
+              One quick note: ClearClaim is an independent helper, not part of ClassWallet, the Arkansas
+              Department of Education, or any EFA or ESA program. We help you prepare strong submissions,
+              but approval is always the program administrator's decision and reimbursement is not
+              guaranteed. Our guidance comes from public program documents that can change, so please
+              verify current rules. What you enter stays private to your account and is never sold or
+              shared. <Link href="/terms" style={{ color: "var(--navy2)" }}>Read the full terms</Link>.
+            </p>
           </div>
         </main>
       </>
@@ -139,10 +147,11 @@ export default async function Dashboard() {
             <span className="spacer" />
             <Link href="/dashboard/documents"><button>Document library</button></Link>
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
+            <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
           </div>
           <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
-            Upload booklists, supply lists, and other supporting proof, or annotate a receipt/booklist
-            (label which line is for which student, mark items) and save it to your library.
+            Upload booklists and supply lists, annotate a receipt or booklist, or black out the parts of a
+            bank statement a reviewer doesn't need before it goes in your packet. Everything stays private to your account.
           </p>
         </div>
 

@@ -202,6 +202,10 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
             Suggestion: “{suggested.slice(0, 80)}{suggested.length > 80 ? "…" : ""}”
           </span>
         </div>
+        <p className="finenote">
+          This draft is yours. Give it a read and adjust anything to fit your student before you submit.
+          The wording follows published program guidance, and final approval is the reviewer's call.
+        </p>
       </div>
 
       {/* Running budget for capped categories */}

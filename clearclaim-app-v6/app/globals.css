@@ -29,3 +29,7 @@ button.primary{background:var(--navy2);color:#fff;border-color:var(--navy2)}
 .authcard h1{font-family:var(--serif);font-size:32px;margin:0 0 2px}
 .authcard .tag{color:var(--muted);margin-bottom:22px;display:block}
 .kid{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fff;box-shadow:var(--sh)}
+.sitefoot{font:400 12px/1.55 var(--sans);color:var(--muted);text-align:center;padding:24px 20px 34px;max-width:840px;margin:0 auto}
+.sitefoot a{color:var(--navy2);text-decoration:none}
+.sitefoot a:hover{text-decoration:underline}
+.finenote{font:400 12px/1.5 var(--sans);color:var(--muted);margin-top:8px}
