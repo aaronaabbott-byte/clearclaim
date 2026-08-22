@@ -13,6 +13,17 @@ export default function Login() {
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
 
+  async function sendReset() {
+    setErr(""); setNote("");
+    if (!email) { setErr("Enter your email first."); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/auth/callback?next=/auth/reset`,
+    });
+    setBusy(false);
+    error ? setErr(error.message) : setNote("Check your email for a link to reset your password.");
+  }
+
   async function submit(e) {
     e.preventDefault();
     setErr(""); setNote(""); setBusy(true);
@@ -71,6 +82,13 @@ export default function Login() {
           {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
         </button>
       </form>
+
+      {mode === "signin" && (
+        <button type="button" onClick={sendReset} disabled={busy} className="sans"
+          style={{ border: "none", background: "none", color: "var(--navy2)", fontSize: 13, marginTop: 12, cursor: "pointer" }}>
+          Forgot password?
+        </button>
+      )}
 
       {err && <p style={{ color: "var(--red)", fontSize: 13, marginTop: 12 }}>{err}</p>}
       {note && <p style={{ color: "var(--teal)", fontSize: 13, marginTop: 12 }}>{note}</p>}

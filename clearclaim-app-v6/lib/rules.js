@@ -17,8 +17,72 @@ export const PATHWAY_FIELDS = {
 export const CATEGORIES = [
   "Educational Supplies","Curriculum / Textbooks","Technology","School Uniforms",
   "Testing Costs","Tutoring","Instructional Services (Core or Co-Curricular)",
-  "Extra-Curricular, PE & Field Trips","Musical Instrument","Furniture","Other",
+  "Extra-Curricular, PE & Field Trips","Travel / Mileage (approved trips)",
+  "Musical Instrument","Furniture","Other",
 ];
+
+// Program funding reference (Arkansas EFA, 2026-27). NET amounts after fees.
+export const FUNDING = {
+  year: "2026-27",
+  nonSucceed: { annual: 7208, quarterly: 1802 },
+  succeed:    { annual: 8011, quarterly: 2002.75 },
+  quarterlyDates: ["Aug 20", "Oct 29", "Feb 4", "Apr 8"],
+  extracurricularCapPct: 0.25,   // travel, PE, field trips, extracurriculars
+  travelCapPct: 0.25,
+  techCapPerStudent: 1000,
+  mileageRate: 0.52,
+  deskMax: 300, chairMax: 150,   // one of each per student; no gaming chair
+};
+// 25% cap in dollars for a standard (non-Succeed) student this year.
+const CAP_25 = Math.round(FUNDING.nonSucceed.annual * 0.25); // ~$1,802
+
+// The Arkansas EFA budget year runs Aug 1 – Jul 31 (Q1 funds drop ~Aug 20).
+export function efaBudgetYear(dateStr) {
+  const d = dateStr ? new Date(dateStr.length <= 10 ? dateStr + "T00:00:00" : dateStr) : new Date();
+  const y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1; // month 7 = August
+  return {
+    startYear: y,
+    label: `${y}–${String((y + 1) % 100).padStart(2, "0")}`,
+    start: `${y}-08-01`,
+    end: `${y + 1}-07-31`,
+  };
+}
+export function claimDate(c) { return c.date || (c.created_at ? String(c.created_at).slice(0, 10) : null); }
+export function inBudgetYear(c, by) { const d = claimDate(c); return !!d && d >= by.start && d <= by.end; }
+
+// Funding tiers a student can be on. The 25% caps scale with annual funding.
+export const FUNDING_TIERS = [
+  { value: "standard", label: "Standard ($7,208/yr)" },
+  { value: "succeed", label: "Succeed ($8,011/yr)" },
+];
+export function annualFunding(tier) {
+  return tier === "succeed" ? FUNDING.succeed.annual : FUNDING.nonSucceed.annual;
+}
+export function annualCaps(tier) {
+  const cap25 = Math.round(annualFunding(tier) * 0.25);
+  return { technology: FUNDING.techCapPerStudent, extracurricular: cap25, travel: cap25 };
+}
+
+// Caps that accumulate per student, per budget year. `tier` scales the 25% caps.
+// Returns null for uncapped categories.
+export function categoryCap(category, tier) {
+  const c = (category || "").toLowerCase();
+  const caps = annualCaps(tier);
+  if (c.includes("technology"))
+    return { key: "technology", label: "Technology", amount: caps.technology };
+  if (c.includes("extra-curricular") || c.includes("field trip") || c.includes(" pe"))
+    return { key: "extracurricular", label: "Extracurricular / PE / field trips", amount: caps.extracurricular };
+  if (c.includes("travel") || c.includes("mileage"))
+    return { key: "travel", label: "Travel / mileage", amount: caps.travel };
+  return null;
+}
+// Sum a student's prior claims that fall under the same cap in the same budget year.
+export function priorCapSpend(claims, kidId, capKey, by, excludeId) {
+  return (claims || [])
+    .filter(c => c.kid_id === kidId && c.id !== excludeId
+      && (categoryCap(c.category) || {}).key === capKey && inBudgetYear(c, by))
+    .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+}
 
 // price guidance (helper, not a hard cap)
 const PRICE = [["scientific calculator",50],["graphing calculator",150],["basic calculator",15],
@@ -53,6 +117,38 @@ export function checkClaim(c) {
   }
   PRICE.forEach(([k,max]) => { if (hay.includes(k) && +c.amount > max)
     push("warn", `Amount over the $${max} price-guidance figure for "${k}" — allowed, but justify it.`); });
+
+  // Category-specific caps and guidance (Arkansas EFA FAQ).
+  const cat = (c.category || "").toLowerCase();
+  const amt = +c.amount || 0;
+  if (cat.includes("technology")) {
+    push(amt > 1000 ? "warn" : "ok", amt > 1000
+      ? "Over the $1,000/student/year technology cap (all tech shares it: computers, tablets, printers, headphones, accessories). Above it needs a documented exception approved in advance."
+      : "Counts toward the $1,000/student/year technology cap. Note an e-reader counts as a tablet — you can't claim both.");
+  }
+  if (cat.includes("extra-curricular") || cat.includes("field trip") || cat.includes(" pe")) {
+    push("warn", `Draws from the 25% extracurricular/PE/field-trip cap (~$${CAP_25}/student this year). Memberships and family passes count here — split a family pass across the students who use it.`);
+  }
+  if (cat.includes("travel") || cat.includes("mileage")) {
+    push("warn", `Approved travel is reimbursed at $${FUNDING.mileageRate}/mile and draws from the 25% travel cap (~$${CAP_25}/student). Attach a completed mileage log with dates, destinations, and miles.`);
+  }
+  if (cat.includes("curriculum")) {
+    push("ok", "Core curriculum from any store is always 100% reimbursable — include an itemized receipt; a bank/card statement showing the charge cleared makes it airtight.");
+  }
+  if (cat.includes("furniture")) {
+    push("ok", `Furniture: one desk (≤$${FUNDING.deskMax}) and one chair (≤$${FUNDING.chairMax}) per student. No gaming or storage furniture.`);
+  }
+
+  // Keyword guidance that cuts across categories.
+  if (/(internet|wi-?fi|broadband)/.test(hay) && /(month|service|bill|subscription|fee|plan)/.test(hay))
+    push("fail", "Internet service fees aren't reimbursable — only equipment used to access the internet. (For service costs, look at the federal Affordable Connectivity Program.)");
+  if (/(membership|family pass|season pass|zoo|museum)/.test(hay))
+    push("warn", "Memberships/passes are extracurricular — they come from the 25% cap. Buy a child-only pass, or split a family pass across your funded students.");
+  if (/\bused\b|second-?hand|pre-?owned|refurbished/.test(hay))
+    push("warn", "Used items can be reimbursed, but follow ADE's used-item rules — keep proof of the item, its condition, and what you paid.");
+  if (/subscription/.test(hay) && !cat.includes("technology"))
+    push("warn", "Subscriptions are approved case-by-case (reimbursement-only for some). Check it against the ADE approved-subscription list before relying on it.");
+
   return out;
 }
 
