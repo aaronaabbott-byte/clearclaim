@@ -36,14 +36,19 @@ export default function AskAnn() {
   return (
     <>
       {/* Launcher */}
-      <button onClick={() => setOpen(o => !o)} aria-label="Ask Ann"
+      <button onClick={() => setOpen(o => !o)} aria-label="Ask Ann" title="Ask Ann"
         style={{
           position: "fixed", right: 20, bottom: 20, zIndex: 60,
           width: 60, height: 60, borderRadius: "50%", border: "none", cursor: "pointer",
           background: "linear-gradient(135deg, var(--navy), var(--navy2))", color: "#fff",
-          boxShadow: "0 10px 30px rgba(20,30,45,.28)", fontFamily: "var(--serif)", fontSize: 20, fontWeight: 700,
+          boxShadow: "0 10px 30px rgba(20,30,45,.28)", fontSize: 22, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-        {open ? "✕" : "Ann"}
+        {open ? "✕" : (
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+            <path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z" />
+          </svg>
+        )}
       </button>
 
       {open && (
