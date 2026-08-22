@@ -54,6 +54,9 @@ create table if not exists syllabi (
   subject text,               -- subject area, e.g. "World Languages"
   grade text,
   term text,                  -- e.g. "2026-27"
+  level text,                 -- Beginner | Intermediate | Advanced
+  weeks text,
+  sessions_per_week text,
   instructor text,
   description text,
   objectives text,            -- learning objectives
@@ -65,16 +68,30 @@ create table if not exists syllabi (
   created_at timestamptz default now()
 );
 
-alter table kids    enable row level security;
-alter table vendors enable row level security;
-alter table claims  enable row level security;
-alter table syllabi enable row level security;
+-- Family document library — booklists, supply lists, and other supporting docs.
+create table if not exists documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kid_id uuid references kids(id) on delete set null,
+  label text,
+  kind text,                  -- booklist | supply | receipt | annotated | other
+  path text not null,         -- object path in the 'documents' storage bucket
+  filename text,
+  created_at timestamptz default now()
+);
+
+alter table kids      enable row level security;
+alter table vendors   enable row level security;
+alter table claims    enable row level security;
+alter table syllabi   enable row level security;
+alter table documents enable row level security;
 
 -- owner-only access
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own syllabi" on syllabi for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own documents" on documents for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Storage: create a PRIVATE bucket named 'documents' in the dashboard, then run
 -- these so each user can only touch files under a top-level folder named for their uid

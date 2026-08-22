@@ -2,14 +2,17 @@
 
 // A reasonable starter draft with no AI, from a few inputs. Returned when there's
 // no API key, or as the instant default before the parent asks for AI.
-export function localSyllabusDraft({ title, subject, grade, term, materials }) {
+export function localSyllabusDraft({ title, subject, grade, term, materials, level, weeks, sessions_per_week }) {
   const gr = grade ? `grade ${grade}` : "this grade level";
   const subj = subject || title || "this subject";
   const mats = materials || "the selected curriculum and supporting resources";
+  const lvl = level ? `${level.toLowerCase()}-level ` : "";
+  const wk = weeks ? `${weeks}-week ` : "";
+  const cadence = sessions_per_week ? ` It meets ${sessions_per_week} session(s) per week.` : "";
   return {
     description:
-      `${title || subj} is a ${gr} course for the ${term || "current"} school year. It provides structured, ` +
-      `sequential instruction in ${subj}, building skills through regular lessons, practice, and review using ${mats}.`,
+      `${title || subj} is a ${wk}${lvl}${gr} course for the ${term || "current"} school year. It provides structured, ` +
+      `sequential instruction in ${subj}, building skills through regular lessons, practice, and review using ${mats}.${cadence}`,
     objectives:
       `By the end of the course the student will be able to:\n` +
       `• Demonstrate core knowledge and vocabulary of ${subj}.\n` +
@@ -70,7 +73,11 @@ export async function buildSyllabusPdf(syl, kid) {
 
   const yRef = { y: 100 };
   doc.setTextColor(...colors.muted); doc.setFontSize(9.5); doc.setFont("helvetica", "normal");
-  const line2 = [syl.instructor ? `Instructor: ${syl.instructor}` : null,
+  const line2 = [
+    syl.level ? syl.level : null,
+    syl.weeks ? `${syl.weeks} weeks` : null,
+    syl.sessions_per_week ? `${syl.sessions_per_week}×/week` : null,
+    syl.instructor ? `Instructor: ${syl.instructor}` : null,
     kid && kid.school_name ? kid.school_name : (kid && kid.setting === "homeschool" ? "Homeschool" : null)]
     .filter(Boolean).join("   ·   ");
   if (line2) { doc.text(line2, M, yRef.y); yRef.y += 18; }

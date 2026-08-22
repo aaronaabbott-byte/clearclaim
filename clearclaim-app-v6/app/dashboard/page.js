@@ -206,7 +206,7 @@ export default async function Dashboard() {
                     <div style={{ flex: 1 }}>
                       <b>{s.title || s.subject || "Course"}</b>
                       <div className="muted sans" style={{ fontSize: 13 }}>
-                        {kidName(s.kid_id)}{s.subject ? ` · ${s.subject}` : ""}{s.term ? ` · ${s.term}` : ""}
+                        {s.kid_id ? kidName(s.kid_id) : "Reusable template"}{s.subject ? ` · ${s.subject}` : ""}{s.term ? ` · ${s.term}` : ""}
                       </div>
                     </div>
                     <span className="sans" style={{ fontSize: 12.5, color: "var(--navy2)" }}>Open →</span>
@@ -215,6 +215,19 @@ export default async function Dashboard() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>Documents & tools</h2>
+            <span className="spacer" />
+            <Link href="/dashboard/documents"><button>Document library</button></Link>
+            <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
+          </div>
+          <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
+            Upload booklists, supply lists, and other supporting proof, or annotate a receipt/booklist
+            (label which line is for which student, mark items) and save it to your library.
+          </p>
         </div>
 
         <CocurricularGuide />

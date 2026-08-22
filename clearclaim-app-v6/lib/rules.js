@@ -84,14 +84,80 @@ export function priorCapSpend(claims, kidId, capKey, by, excludeId) {
     .reduce((s, c) => s + (Number(c.amount) || 0), 0);
 }
 
-// price guidance (helper, not a hard cap)
-const PRICE = [["scientific calculator",50],["graphing calculator",150],["basic calculator",15],
-  ["microscope",350],["telescope",300],["desk",300],["chair",150],["headphones",100],
-  ["printer",500],["monitor",150]];
-// non-qualifying items, date-sensitive (Arkansas EFA example)
-const NONQUAL = ["backpack","lunchbox","jeans","footwear","socks","spirit wear","gaming chair",
-  "bookshelf","storage","purse","jewelry","watch","bluetooth speaker","phone case"];
+// ---------------------------------------------------------------------------
+// EFA Program Price Guidance (official sheet, updated 2026-08-20). Recommended
+// amounts — not hard caps or guarantees. `max` is the higher listed tier.
+// eligible:false items are listed "Not Eligible". `inst` = musical instrument
+// (proof of enrollment required). `dated` items follow the Aug-18 grandfather.
+// ---------------------------------------------------------------------------
+export const PG_UPDATED = "2026-08-20";
 const NONQUAL_DATE = "2026-08-18";
+const PG = [
+  // Musical instruments (Beginner / Advanced → max = Advanced). Proof of enrollment required.
+  { kw: ["acoustic guitar"], max: 500, inst: 1 }, { kw: ["electric guitar"], max: 800, inst: 1 },
+  { kw: ["box drum", "cajon"], max: 400, inst: 1 }, { kw: ["cello"], max: 1200, inst: 1 },
+  { kw: ["clarinet"], max: 900, inst: 1 }, { kw: ["drum set", "drum kit"], max: 800, inst: 1 },
+  { kw: ["euphonium", "baritone horn"], max: 1000, inst: 1 }, { kw: ["flute"], max: 900, inst: 1 },
+  { kw: ["french horn"], max: 1000, inst: 1 }, { kw: ["mandolin", "banjo"], max: 500, inst: 1 },
+  { kw: ["oboe"], max: 1000, inst: 1 }, { kw: ["piano", "keyboard (piano)", "digital piano"], max: 900, inst: 1 },
+  { kw: ["recorder"], max: 100, inst: 1 }, { kw: ["saxophone"], max: 900, inst: 1 },
+  { kw: ["trombone"], max: 900, inst: 1 }, { kw: ["trumpet", "cornet"], max: 900, inst: 1 },
+  { kw: ["tuba"], max: 1200, inst: 1 }, { kw: ["ukulele"], max: 300, inst: 1 },
+  { kw: ["violin", "viola"], max: 700, inst: 1 },
+  // Scientific instruments
+  { kw: ["binoculars"], max: 100 }, { kw: ["smartphone microscope", "camera microscope"], max: 50 },
+  { kw: ["chemistry lab kit", "chemistry kit"], max: 300 }, { kw: ["dissection kit"], max: 100 },
+  { kw: ["incubator"], max: 200 }, { kw: ["grow light", "growing system", "grow tray"], max: 150 },
+  { kw: ["insect collection", "insect life cycle"], max: 100 }, { kw: ["loupe", "magnifying glass"], max: 25 },
+  { kw: ["microscope"], max: 350 }, { kw: ["raised garden bed", "raised bed"], max: 100 },
+  { kw: ["rock kit", "mineral kit", "rock/mineral"], max: 150 }, { kw: ["telescope"], max: 300 },
+  { kw: ["seeds", "soil amendment", "plants"], max: 100 },
+  { kw: ["gardening hand tool", "garden hand tool"], max: null, eligible: false },
+  // Furniture
+  { kw: ["desk"], max: 300 }, { kw: ["chair"], max: 150 },
+  { kw: ["bookshelf", "bookcase"], max: null, eligible: false },
+  { kw: ["dining table"], max: null, eligible: false },
+  { kw: ["storage container", "storage cabinet", "filing cabinet"], max: null, eligible: false },
+  { kw: ["gaming chair"], max: null, eligible: false },
+  // Technology (also under the $1,000 tech cap)
+  { kw: ["3d printer"], max: 300 }, { kw: ["computer speaker"], max: 50 },
+  { kw: ["headphone", "earbud"], max: 100 }, { kw: ["keyboard"], max: 75 },
+  { kw: ["microphone"], max: 50 }, { kw: ["modem", "router"], max: 200 },
+  { kw: ["monitor"], max: 150 }, { kw: ["mouse"], max: 50 },
+  { kw: ["printer", "scanner"], max: 500 }, { kw: ["projector"], max: 200 },
+  { kw: ["webcam"], max: 25 }, { kw: ["wi-fi extender", "wifi extender"], max: 100 },
+  { kw: ["digital calendar"], max: null, eligible: false },
+  { kw: ["protective case", "device case", "phone case", "tablet case"], max: null, eligible: false },
+  { kw: ["bluetooth speaker"], max: null, eligible: false },
+  // General school supplies
+  { kw: ["accounting calculator"], max: 75 }, { kw: ["graphing calculator"], max: 150 },
+  { kw: ["scientific calculator"], max: 50 }, { kw: ["basic calculator"], max: 15 },
+  { kw: ["dry erase board", "whiteboard", "chalkboard"], max: 150 }, { kw: ["globe"], max: 100 },
+  { kw: ["label maker"], max: 50 }, { kw: ["laminating sheet", "laminating pouch"], max: 50 },
+  { kw: ["laminator"], max: 75 }, { kw: ["paper cutter"], max: 50 },
+  { kw: ["planner"], max: 30 }, { kw: ["binding machine"], max: 100 },
+  { kw: ["wall calendar", "desk calendar"], max: 30 }, { kw: ["clock"], max: 30 },
+  // CTE
+  { kw: ["chomp saw"], max: 250 }, { kw: ["chicken coop"], max: 300 },
+  { kw: ["greenhouse"], max: 400 }, { kw: ["sewing machine"], max: 300 },
+  { kw: ["vinyl cutter", "cricut", "silhouette"], max: 200 }, { kw: ["wood shop", "woodshop"], max: 400 },
+  // Uniforms
+  { kw: ["uniform dress", "jumper", "skort"], max: 45 }, { kw: ["uniform pant"], max: 45 },
+  { kw: ["uniform short"], max: 40 }, { kw: ["uniform shirt", "polo", "cardigan"], max: 35 },
+  // Physical education / other explicitly ineligible
+  { kw: ["sports equipment", "athletic gear", "weightlifting", "helmet", "sports ball", "bat "], max: null, eligible: false },
+  { kw: ["sports uniform"], max: null, eligible: false },
+  { kw: ["footwear", "shoes", "sneaker"], max: null, eligible: false },
+  { kw: ["jeans"], max: null, eligible: false },
+  { kw: ["spirit wear"], max: null, eligible: false },
+  { kw: ["outerwear", "jacket", "coat"], max: null, eligible: false },
+  { kw: ["underwear", "socks", "hosiery", "undergarment"], max: null, eligible: false },
+  { kw: ["jewelry", "hair accessor", "purse", "watch"], max: null, eligible: false },
+  // Dated (grandfathered before Aug 18)
+  { kw: ["backpack", "briefcase", "laptop bag"], max: null, eligible: false, dated: 1 },
+  { kw: ["lunchbox", "lunch box"], max: null, eligible: false, dated: 1 },
+];
+const INSTRUMENT_CATS = ["instrument"];
 
 export function checkClaim(c) {
   const out = []; const push = (level, msg) => out.push({ level, msg });
@@ -109,18 +175,35 @@ export function checkClaim(c) {
   c.category ? push("ok","Category selected.") : push("fail","Pick one expense category.");
   (c.purpose || c.reasoning) ? push("ok","Educational reasoning provided.") : push("warn","Add a short note on how the student uses these items.");
   const hay = ((c.items||"")+" "+(c.purpose||"")+" "+(c.vendor||"")).toLowerCase();
-  const hit = NONQUAL.find(k => hay.includes(k));
-  if (hit) {
-    const after = c.date && c.date >= NONQUAL_DATE;
-    push(after ? "fail" : "warn", `Contains "${hit}", on the non-qualifying list (effective ${NONQUAL_DATE}). ` +
-      (after ? "Purchased on/after that date, so likely ineligible." : "Purchased before that date, so likely grandfathered — keep the date visible."));
-  }
-  PRICE.forEach(([k,max]) => { if (hay.includes(k) && +c.amount > max)
-    push("warn", `Amount over the $${max} price-guidance figure for "${k}" — allowed, but justify it.`); });
-
-  // Category-specific caps and guidance (Arkansas EFA FAQ).
   const cat = (c.category || "").toLowerCase();
   const amt = +c.amount || 0;
+
+  // Match the claim text against the official price-guidance list.
+  const seen = new Set();
+  let priceNotes = 0, instrumentFlagged = false;
+  for (const g of PG) {
+    const label = g.kw[0];
+    if (seen.has(label)) continue;
+    if (!g.kw.some(k => hay.includes(k))) continue;
+    seen.add(label);
+    if (g.eligible === false) {
+      if (g.dated) {
+        const after = c.date && c.date >= NONQUAL_DATE;
+        push(after ? "fail" : "warn", `"${label}" is on the non-qualifying list (effective ${NONQUAL_DATE}). ` +
+          (after ? "Bought on/after that date, so likely ineligible." : "Bought before it, so likely grandfathered — keep the date visible."));
+      } else {
+        push("fail", `"${label}" is listed Not Eligible in the EFA price guidance.`);
+      }
+    } else if (g.max && amt > g.max && priceNotes < 3) {
+      priceNotes++;
+      push("warn", `Amount is over the $${g.max} price-guidance figure for "${label}" — allowed, but be ready to justify it.`);
+    }
+    if (g.inst) instrumentFlagged = true;
+  }
+  if (instrumentFlagged || INSTRUMENT_CATS.some(k => cat.includes(k))) {
+    push("warn", "Musical instrument: proof of course enrollment or lesson participation must be submitted with the request (and with any repair/maintenance claim).");
+  }
+
   if (cat.includes("technology")) {
     push(amt > 1000 ? "warn" : "ok", amt > 1000
       ? "Over the $1,000/student/year technology cap (all tech shares it: computers, tablets, printers, headphones, accessories). Above it needs a documented exception approved in advance."

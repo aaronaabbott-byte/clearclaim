@@ -16,6 +16,9 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
     subject: existing?.subject || "",
     grade: existing?.grade || (kids[0]?.grade || ""),
     term: existing?.term || efaBudgetYear().label,
+    level: existing?.level || "",
+    weeks: existing?.weeks || "",
+    sessions_per_week: existing?.sessions_per_week || "",
     instructor: existing?.instructor || "",
     description: existing?.description || "",
     objectives: existing?.objectives || "",
@@ -39,7 +42,8 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
       const res = await fetch("/api/syllabus", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          input: { title: f.title, subject: f.subject, grade: f.grade, term: f.term, materials: f.materials, notes },
+          input: { title: f.title, subject: f.subject, grade: f.grade, term: f.term, materials: f.materials,
+            level: f.level, weeks: f.weeks, sessions_per_week: f.sessions_per_week, notes },
           kid: kid || {},
         }),
       });
@@ -61,9 +65,8 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
   async function save() {
     setErr(""); setMsg(""); setBusy(true);
     try {
-      if (!kidId) { setErr("Pick a student."); setBusy(false); return; }
       if (!f.title && !f.subject) { setErr("Give the course a title or subject."); setBusy(false); return; }
-      const row = { user_id: userId, kid_id: kidId, status: "final", ...f };
+      const row = { user_id: userId, kid_id: kidId || null, status: "final", ...f };
       let error;
       if (editing) ({ error } = await supabase.from("syllabi").update(row).eq("id", existing.id));
       else ({ error } = await supabase.from("syllabi").insert(row));
@@ -71,6 +74,20 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
       setMsg("Saved.");
       router.refresh();
       setTimeout(() => router.push("/dashboard"), 900);
+    } catch (e) { setErr(e.message || "Something went wrong."); }
+    setBusy(false);
+  }
+
+  // Save a copy — great for reusing a syllabus for another child or year.
+  async function duplicate() {
+    setErr(""); setMsg(""); setBusy(true);
+    try {
+      const row = { user_id: userId, kid_id: kidId || null, status: "draft", ...f,
+        title: (f.title || f.subject || "Course") + " (copy)" };
+      const { data, error } = await supabase.from("syllabi").insert(row).select("id").single();
+      if (error) { setErr("Could not duplicate: " + error.message); setBusy(false); return; }
+      router.push(`/dashboard/syllabus/${data.id}`);
+      router.refresh();
     } catch (e) { setErr(e.message || "Something went wrong."); }
     setBusy(false);
   }
@@ -97,6 +114,7 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
       <div className="row" style={{ marginTop: 10 }}>
         <div><label>Student</label>
           <select value={kidId} onChange={e => setKidId(e.target.value)}>
+            <option value="">Unassigned — reusable template</option>
             {kids.map(k => <option key={k.id} value={k.id}>{k.first_name}{k.grade ? ` (grade ${k.grade})` : ""}</option>)}
           </select>
         </div>
@@ -107,6 +125,16 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
         <div><label>Grade</label><input value={f.grade} onChange={e => set("grade", e.target.value)} placeholder="e.g. 5" /></div>
         <div><label>Term / year</label><input value={f.term} onChange={e => set("term", e.target.value)} /></div>
         <div><label>Instructor</label><input value={f.instructor} onChange={e => set("instructor", e.target.value)} placeholder="e.g. Parent / co-op teacher" /></div>
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        <div><label>Level</label>
+          <select value={f.level} onChange={e => set("level", e.target.value)}>
+            <option value="">—</option>
+            <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+          </select>
+        </div>
+        <div><label>Weeks</label><input value={f.weeks} onChange={e => set("weeks", e.target.value)} placeholder="e.g. 18" inputMode="numeric" /></div>
+        <div><label>Sessions / week</label><input value={f.sessions_per_week} onChange={e => set("sessions_per_week", e.target.value)} placeholder="e.g. 3" inputMode="numeric" /></div>
       </div>
 
       <div style={{ marginTop: 14, border: "1px dashed var(--line)", borderRadius: 12, padding: "12px 14px", background: "#f7f9fc" }}>
@@ -131,6 +159,7 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
 
       <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
         <button className="primary" disabled={busy} onClick={save}>{busy ? "Saving…" : editing ? "Save changes" : "Save syllabus"}</button>
+        {editing && <button type="button" disabled={busy} onClick={duplicate}>Duplicate</button>}
         <button type="button" onClick={downloadPdf}>Download PDF</button>
         <button type="button" onClick={() => router.push("/dashboard")} style={{ marginLeft: "auto" }}>Cancel</button>
       </div>

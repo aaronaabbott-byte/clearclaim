@@ -25,6 +25,8 @@ Use "\\n" for line breaks inside a value. No markdown, no commentary, no extra k
 Course title: ${input.title || "(none)"}
 Subject: ${input.subject || "(none)"}
 Grade: ${input.grade || kid.grade || "(none)"}
+Level: ${input.level || "(none)"}
+Length: ${input.weeks ? `${input.weeks} weeks` : "(one term)"}, ${input.sessions_per_week ? `${input.sessions_per_week} session(s)/week` : "(cadence unspecified)"}
 Term: ${input.term || "(current year)"}
 Student: ${kid.first_name || "the student"}${kid.setting === "homeschool" ? " (homeschool)" : kid.school_name ? ` (${kid.school_name})` : ""}
 Curriculum / materials the parent is using: ${input.materials || "(not specified — suggest suitable ones)"}
