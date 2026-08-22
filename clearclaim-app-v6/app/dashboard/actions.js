@@ -17,6 +17,7 @@ export async function addKid(formData) {
     school_name: setting === "homeschool" ? null : (formData.get("school_name") || null),
     subjects: formData.get("subjects") || null,
     funding_tier: formData.get("funding_tier") || "standard",
+    program_start_year: parseInt(formData.get("program_start_year"), 10) || null,
   });
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");
@@ -34,6 +35,7 @@ export async function updateKid(formData) {
     school_name: setting === "homeschool" ? null : (formData.get("school_name") || null),
     subjects: formData.get("subjects") || null,
     funding_tier: formData.get("funding_tier") || "standard",
+    program_start_year: parseInt(formData.get("program_start_year"), 10) || null,
   }).eq("id", formData.get("id"));
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");

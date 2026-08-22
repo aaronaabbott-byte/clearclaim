@@ -87,6 +87,11 @@ export default function Terms() {
             with ClassWallet, the state, or other third parties, except service providers that help us run
             the app (such as hosting and AI drafting) and only as needed to provide the service, or if the
             law requires it.</p>
+            <p>If you use the pre-approval tool, we store the request you build (the students listed, the item
+            description, the anticipated cost, and the justification text) in a log for your own reference. We
+            do not submit the Department's form for you and we have no connection to the Department's systems,
+            so any approval status in the log is what you enter yourself.</p>
+
             <p>Documents you put through the redaction tool are processed in your browser. The original,
             un-redacted file is not sent to or stored on our servers. Only items you choose to save are
             stored, and we keep them until you delete them or close your account. You keep ownership of your

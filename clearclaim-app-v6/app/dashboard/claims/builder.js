@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
   categoryCap, efaBudgetYear, priorCapSpend } from "@/lib/rules";
-import { buildPacketPdf } from "@/lib/packet";
+import { buildPacketPdfs } from "@/lib/packet";
 
 const DOT = { ok: "var(--teal)", warn: "var(--gold)", fail: "var(--red)" };
 const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
-export default function ClaimBuilder({ kids, userId, claims = [] }) {
+export default function ClaimBuilder({ kids, userId, claims = [], initialItems = "", initialNote = "" }) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -19,8 +19,8 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [category, setCategory] = useState("");
-  const [items, setItems] = useState("");
-  const [purpose, setPurpose] = useState("");
+  const [items, setItems] = useState(initialItems);
+  const [purpose, setPurpose] = useState(initialNote);
   const [reasoning, setReasoning] = useState("");
   const [receipts, setReceipts] = useState([]);   // File[]
   const [payments, setPayments] = useState([]);    // File[]
@@ -88,10 +88,16 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
     setAiBusy(false);
   }
 
+  function packetName(i, total) {
+    const base = `ClearClaim-${(vendor || "packet").replace(/\W+/g, "-")}-${date || "draft"}`;
+    return total > 1 ? `${base}-file${i + 1}of${total}.pdf` : `${base}.pdf`;
+  }
+
   async function downloadPacket() {
     setErr(""); setMsg("");
-    const doc = await buildPacketPdf({ ...claim, reasoning: reasoning || suggested }, kid, images());
-    doc.save(`ClearClaim-${(vendor || "packet").replace(/\W+/g, "-")}-${date || "draft"}.pdf`);
+    const docs = await buildPacketPdfs({ ...claim, reasoning: reasoning || suggested }, kid, images());
+    docs.forEach((d, i) => d.save(packetName(i, docs.length)));
+    if (docs.length > 1) setMsg(`Your packet was split into ${docs.length} files so each stays under ClassWallet's page limit. Upload all ${docs.length} to the same submission.`);
   }
 
   async function saveAndBuild() {
@@ -119,14 +125,17 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
       }
       if (uploaded.length) await supabase.from("claims").update({ files: uploaded }).eq("id", row.id);
 
-      // Build the combined packet from the local files and download it.
-      const doc = await buildPacketPdf({ ...claim, reasoning: finalReasoning }, kid, images());
-      doc.save(`ClearClaim-${(vendor || "packet").replace(/\W+/g, "-")}-${date || "draft"}.pdf`);
+      // Build the packet (split into <=5-page files) and download each.
+      const docs = await buildPacketPdfs({ ...claim, reasoning: finalReasoning }, kid, images());
+      docs.forEach((d, i) => d.save(packetName(i, docs.length)));
 
-      const note = uploaded.length < images().length && images().length > 0
+      const storeNote = uploaded.length < images().length && images().length > 0
         ? " (files couldn't be stored — check Storage policies — but the packet downloaded fine)"
         : "";
-      setMsg("Saved and packet downloaded." + note);
+      const splitNote = docs.length > 1
+        ? ` Your packet is ${docs.length} files, each under ClassWallet's page limit — upload all ${docs.length} to the same submission.`
+        : "";
+      setMsg("Saved and packet downloaded." + splitNote + storeNote);
       router.refresh();
       setTimeout(() => router.push("/dashboard"), 1200);
     } catch (e) {
@@ -176,13 +185,13 @@ export default function ClaimBuilder({ kids, userId, claims = [] }) {
       {pathway === "reimbursement" && (
         <div className="row" style={{ marginTop: 12 }}>
           <div>
-            <label>Receipt image(s)</label>
-            <input type="file" accept="image/*" multiple onChange={e => setReceipts([...e.target.files])} />
-            <div className="muted sans" style={{ fontSize: 12, marginTop: 4 }}>{receipts.length ? `${receipts.length} file(s)` : "Itemized receipt showing store, date, items, payment method."}</div>
+            <label>Receipt (photo, screenshot, or PDF)</label>
+            <input type="file" accept="image/*,application/pdf" multiple onChange={e => setReceipts([...e.target.files])} />
+            <div className="muted sans" style={{ fontSize: 12, marginTop: 4 }}>{receipts.length ? `${receipts.length} file(s)` : "Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you."}</div>
           </div>
           <div>
-            <label>Bank / card charge screenshot(s)</label>
-            <input type="file" accept="image/*" multiple onChange={e => setPayments([...e.target.files])} />
+            <label>Bank / card charge (photo, screenshot, or PDF)</label>
+            <input type="file" accept="image/*,application/pdf" multiple onChange={e => setPayments([...e.target.files])} />
             <div className="muted sans" style={{ fontSize: 12, marginTop: 4 }}>{payments.length ? `${payments.length} file(s)` : "Single transaction showing amount, date, merchant. Required for PayPal."}</div>
           </div>
         </div>

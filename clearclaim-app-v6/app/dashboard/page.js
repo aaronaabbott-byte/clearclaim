@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps } from "@/lib/rules";
 import CocurricularGuide from "./cocurricular";
 import { Bar, KidForm } from "./students";
+import ClaimOutcome from "./claim-outcome";
+import PreapprovalStatus from "./preapproval-status";
 
 export default async function Dashboard() {
   const supabase = createClient();
@@ -13,6 +15,7 @@ export default async function Dashboard() {
   const hasKids = kids && kids.length > 0;
   const { data: claims } = await supabase.from("claims").select("*").order("created_at", { ascending: false });
   const { data: syllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term").order("created_at", { ascending: false });
+  const { data: preapprovals } = await supabase.from("preapprovals").select("*").order("created_at", { ascending: false });
   const kidName = (id) => (kids || []).find(k => k.id === id)?.first_name || "—";
   const money = (n) => (n || n === 0) ? `$${Number(n).toFixed(2)}` : "—";
   const settingLabel = (v) => (SETTINGS.find(s => s.value === v) || {}).label || v;
@@ -80,6 +83,46 @@ export default async function Dashboard() {
           </div>
         </div>
 
+        <div className="card" style={{ borderColor: "var(--navy2)", background: "linear-gradient(180deg,#f2f6fb,#fff)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>Check eligibility first</h2>
+            <span className="spacer" />
+            <Link href="/dashboard/eligibility"><button className="primary">Check an item</button></Link>
+          </div>
+          <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
+            Before you buy or build a claim, find out if an item is core or non-core. Starting around December,
+            non-core purchases are expected to need Department pre-approval before you buy, so checking first can
+            save you from paying out of pocket for something that will not be reimbursed.
+          </p>
+        </div>
+
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Pre-approvals</h2>
+            <span className="spacer" />
+            <Link href="/dashboard/preapproval/new"><button className="primary">+ New request</button></Link>
+          </div>
+          <p className="muted sans" style={{ fontSize: 13, marginTop: 8 }}>
+            Non-core purchases need the Department's approval before you buy, through its Google Form. We fill the form for you and
+            keep a log here, since the Department provides no tracking. Status is what you enter yourself.
+          </p>
+          {(preapprovals && preapprovals.length > 0) && (
+            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+              {preapprovals.map(p => (
+                <div className="kid" key={p.id} style={{ alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <Link href={`/dashboard/preapproval/${p.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                      <b>{p.description || "Request"}</b>{p.cost ? ` · $${p.cost}` : ""}
+                    </Link>
+                    <div className="muted sans" style={{ fontSize: 13 }}>{p.students || "—"}{p.submitted_date ? ` · sent ${p.submitted_date}` : ""}</div>
+                  </div>
+                  <PreapprovalStatus req={p} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h2 style={{ margin: 0 }}>Claims</h2>
@@ -96,14 +139,15 @@ export default async function Dashboard() {
               {claims.map(c => {
                 const [label, color] = STATUS[c.status] || STATUS.draft;
                 return (
-                  <div className="kid" key={c.id} style={{ alignItems: "center" }}>
-                    <div style={{ flex: 1 }}>
+                  <div className="kid" key={c.id} style={{ alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
                       <b>{c.vendor || "Claim"}</b> · {money(c.amount)}
                       <div className="muted sans" style={{ fontSize: 13 }}>
                         {kidName(c.kid_id)}{c.date ? ` · ${c.date}` : ""}{c.category ? ` · ${c.category}` : ""}
                       </div>
                     </div>
                     <span className="sans" style={{ fontSize: 12.5, fontWeight: 700, color }}>{label}</span>
+                    <ClaimOutcome claim={c} />
                   </div>
                 );
               })}
@@ -148,6 +192,7 @@ export default async function Dashboard() {
             <Link href="/dashboard/documents"><button>Document library</button></Link>
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
             <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
+            <Link href="/dashboard/submit-steps"><button>How to submit on ClassWallet</button></Link>
           </div>
           <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
             Upload booklists and supply lists, annotate a receipt or booklist, or black out the parts of a

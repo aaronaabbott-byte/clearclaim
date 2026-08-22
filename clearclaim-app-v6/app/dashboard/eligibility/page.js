@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import ClaimBuilder from "../builder";
+import { config } from "@/lib/classify";
+import Eligibility from "./eligibility";
 
-export default async function NewClaim({ searchParams }) {
+export default async function EligibilityPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("*").order("created_at");
-  const { data: claims } = await supabase.from("claims").select("id,kid_id,category,amount,date,created_at");
-  const initialItems = (searchParams?.items || "").toString();
-  const initialNote = (searchParams?.note || "").toString();
+  const { data: kids } = await supabase.from("kids").select("id,first_name,program_start_year").order("created_at");
 
   return (
     <>
@@ -21,8 +19,7 @@ export default async function NewClaim({ searchParams }) {
         <Link href="/dashboard"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Dashboard</button></Link>
       </header>
       <main>
-        <ClaimBuilder kids={kids || []} userId={user.id} claims={claims || []}
-          initialItems={initialItems} initialNote={initialNote} />
+        <Eligibility kids={kids || []} ruleVersion={config.ruleVersion} />
       </main>
     </>
   );

@@ -32,6 +32,7 @@ export function KidForm({ first = true }) {
       <div className="row" style={{ marginTop: 8 }}>
         <div><label>School name (skip if homeschool)</label><input name="school_name" /></div>
         <div><label>Subjects / courses (optional)</label><input name="subjects" placeholder="Math, Latin, Science" /></div>
+        <div><label>Year joined EFA (optional)</label><input name="program_start_year" inputMode="numeric" placeholder="e.g. 2026" /></div>
       </div>
       <TierToggle />
       <button className="primary" style={{ marginTop: 14 }}>{first ? "Add your first student" : "Add student"}</button>
@@ -54,6 +55,7 @@ export function KidEdit({ k }) {
         <div className="row" style={{ marginTop: 8 }}>
           <div><label>School name (skip if homeschool)</label><input name="school_name" defaultValue={k.school_name || ""} /></div>
           <div><label>Subjects / courses</label><input name="subjects" defaultValue={k.subjects || ""} /></div>
+          <div><label>Year joined EFA</label><input name="program_start_year" inputMode="numeric" defaultValue={k.program_start_year || ""} placeholder="e.g. 2026" /></div>
         </div>
         <TierToggle value={k.funding_tier} />
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

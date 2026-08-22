@@ -12,8 +12,14 @@ create table if not exists kids (
   funding_tier text not null default 'standard', -- standard | succeed (scales the 25% caps)
   created_at timestamptz default now()
 );
--- If the kids table already exists from an earlier version, add the column:
+-- If the kids table already exists from an earlier version, add the columns:
 alter table kids add column if not exists funding_tier text not null default 'standard';
+alter table kids add column if not exists program_start_year integer;  -- first program year (for the July 1 first-year floor, 35-111(a)(2)(F)(ii)(b))
+
+-- Claim outcome capture (parent-reported), so we can learn from real denials.
+alter table claims add column if not exists outcome text;         -- approved | denied
+alter table claims add column if not exists outcome_reason text;  -- reviewer's stated reason
+alter table claims add column if not exists outcome_date date;
 
 create table if not exists vendors (
   id uuid primary key default gen_random_uuid(),
@@ -80,11 +86,30 @@ create table if not exists documents (
   created_at timestamptz default now()
 );
 
-alter table kids      enable row level security;
-alter table vendors   enable row level security;
-alter table claims    enable row level security;
-alter table syllabi   enable row level security;
-alter table documents enable row level security;
+-- Pre-approval requests (the ADE Google Form gate before ClassWallet). ClearClaim
+-- has NO integration with the Department; status is entirely parent-entered.
+create table if not exists preapprovals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  students text,              -- one form can list multiple students (shared expense)
+  grade text,
+  description text,           -- short, field 5
+  cost text,                  -- item price the parent will enter
+  justification text,         -- field 7 text
+  link text,                  -- optional supporting link
+  status text default 'draft',-- draft | submitted | approved | denied
+  submitted_date date,
+  decision_date date,
+  notes text,
+  created_at timestamptz default now()
+);
+
+alter table kids        enable row level security;
+alter table vendors     enable row level security;
+alter table claims      enable row level security;
+alter table syllabi     enable row level security;
+alter table documents   enable row level security;
+alter table preapprovals enable row level security;
 
 -- owner-only access
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -92,6 +117,7 @@ create policy "own vendors" on vendors for all using (auth.uid() = user_id) with
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own syllabi" on syllabi for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own documents" on documents for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own preapprovals" on preapprovals for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- Storage: create a PRIVATE bucket named 'documents' in the dashboard, then run
 -- these so each user can only touch files under a top-level folder named for their uid
