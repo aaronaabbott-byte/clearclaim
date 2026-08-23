@@ -11,7 +11,7 @@ export default async function Redact() {
   return (
     <>
       <header>
-        <img src="/wordmark-white.png" alt="ClearClaim" height="42" style={{ display: "block" }} />
+        <img src="/wordmark-white.png" alt="ClearClaim" height="56" style={{ display: "block" }} />
         <span className="spacer" />
         <Link href="/dashboard"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Dashboard</button></Link>
       </header>

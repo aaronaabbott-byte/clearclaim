@@ -24,7 +24,7 @@ export default function Landing() {
   return (
     <div className="lp">
       <nav className="lp-nav">
-        <img src="/wordmark-white.png" alt="ClearClaim" height="30" style={{ display: "block" }} />
+        <img src="/wordmark-white.png" alt="ClearClaim" height="40" style={{ display: "block" }} />
         <span className="sp" />
         <a className="lp-btn lp-btn-ghost" href={`${APP}/login`}>Log in</a>
         <a className="lp-btn lp-btn-gold" href={`${APP}/login`}>Get started</a>

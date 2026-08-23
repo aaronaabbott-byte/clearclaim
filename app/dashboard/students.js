@@ -92,7 +92,7 @@ export function Bar({ email, settings = true, admin = false, providerView = fals
   if (admin) items.push({ label: "Admin", href: "/admin" });
   return (
     <header>
-      <img src="/wordmark-white.png" alt="ClearClaim" height="42" style={{ display: "block" }} />
+      <img src="/wordmark-white.png" alt="ClearClaim" height="56" style={{ display: "block" }} />
       <span className="spacer" />
       {email && <span className="sans hide-sm" style={{ color: "#cadaee", fontSize: 14 }}>{email}</span>}
       <HeaderMenu items={items} />

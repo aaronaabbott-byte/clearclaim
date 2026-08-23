@@ -18,7 +18,7 @@ export default async function EditInvoice({ params }) {
   return (
     <>
       <header>
-        <img src="/wordmark-white.png" alt="ClearClaim" height="42" style={{ display: "block" }} />
+        <img src="/wordmark-white.png" alt="ClearClaim" height="56" style={{ display: "block" }} />
         <span className="spacer" />
         <Link href="/provider/items"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Products & services</button></Link>
         <Link href="/provider"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Provider</button></Link>
