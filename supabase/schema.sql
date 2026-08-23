@@ -127,6 +127,22 @@ create table if not exists profiles (
 -- separate from a parent's course syllabi.
 alter table syllabi add column if not exists branded boolean default false;
 
+-- Extra provider fields: the free-text list of services they offer.
+alter table profiles add column if not exists services text;
+
+-- Provider class roster. Each class holds its students inline as jsonb:
+-- [{ student_name, family_name, contact }].
+create table if not exists classes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text,
+  service text,
+  term text,
+  students jsonb default '[]'::jsonb,
+  notes text,
+  created_at timestamptz default now()
+);
+
 -- Homeschool compliance tracker: which yearly items a family has completed.
 -- One row per (user, item, school year). Presence with done=true = completed.
 create table if not exists compliance (
@@ -142,6 +158,7 @@ create table if not exists compliance (
 
 alter table profiles    enable row level security;
 alter table compliance  enable row level security;
+alter table classes     enable row level security;
 alter table kids        enable row level security;
 alter table vendors     enable row level security;
 alter table claims      enable row level security;
@@ -152,6 +169,7 @@ alter table preapprovals enable row level security;
 -- owner-only access
 create policy "own profile" on profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own compliance" on compliance for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own classes" on classes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

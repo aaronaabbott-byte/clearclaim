@@ -11,7 +11,7 @@ export default function ProviderProfileForm({ profile, userId, redirectTo }) {
 
   const [f, setF] = useState({
     business_name: profile?.business_name || "",
-    service_name: profile?.service_name || "",
+    services: profile?.services || "",
     provider_name: profile?.provider_name || "",
     credentials: profile?.credentials || "",
     contact_email: profile?.contact_email || "",
@@ -67,11 +67,15 @@ export default function ProviderProfileForm({ profile, userId, redirectTo }) {
     <div>
       <div className="row">
         <div><label>Business name</label><input value={f.business_name} onChange={e => set("business_name", e.target.value)} placeholder="e.g. Bright Path Tutoring" /></div>
-        <div><label>Service / program name</label><input value={f.service_name} onChange={e => set("service_name", e.target.value)} placeholder="e.g. Structured Literacy" /></div>
+        <div><label>Your name</label><input value={f.provider_name} onChange={e => set("provider_name", e.target.value)} placeholder="e.g. Jane Doe" /></div>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
-        <div><label>Your name</label><input value={f.provider_name} onChange={e => set("provider_name", e.target.value)} placeholder="e.g. Jane Doe" /></div>
         <div><label>Credentials</label><input value={f.credentials} onChange={e => set("credentials", e.target.value)} placeholder="e.g. M.Ed., CALT" /></div>
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <label>Services you offer</label>
+        <textarea rows={3} value={f.services} onChange={e => set("services", e.target.value)} placeholder={"One per line, e.g.\nReading tutoring\nPiano lessons\nHigh school biology"} />
+        <p className="finenote" style={{ marginTop: 4 }}>List each service on its own line. You can pick from these when you set up a class.</p>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
         <div><label>Contact email</label><input value={f.contact_email} onChange={e => set("contact_email", e.target.value)} placeholder="you@business.com" /></div>

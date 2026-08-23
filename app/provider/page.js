@@ -14,6 +14,8 @@ export default async function ProviderHome() {
   const supabase = createClient();
   const { data: docs } = await supabase.from("syllabi").select("id,title,subject,term,created_at")
     .eq("branded", true).order("created_at", { ascending: false });
+  const { data: classes } = await supabase.from("classes").select("id,name,service,term,students")
+    .order("created_at", { ascending: false });
 
   let logoUrl = null;
   if (profile.logo_path) {
@@ -33,15 +35,48 @@ export default async function ProviderHome() {
               <h2 style={{ margin: 0 }}>{profile.business_name || "Your business"}</h2>
               <div className="muted sans" style={{ fontSize: 13 }}>
                 {[profile.provider_name, profile.credentials].filter(Boolean).join(", ") || "Provider / vendor"}
-                {profile.service_name ? ` · ${profile.service_name}` : ""}
+                {profile.services ? ` · ${profile.services.split(/[\n,]+/).map(s => s.trim()).filter(Boolean).slice(0, 3).join(", ")}` : ""}
               </div>
             </div>
-            <Link href="/dashboard/settings"><button>Edit business profile</button></Link>
+            <Link href="/provider/setup"><button>Edit business profile</button></Link>
           </div>
           {!ready &&
             <p className="finenote" style={{ marginTop: 12 }}>
               Finish your <Link href="/provider/setup" style={{ color: "var(--navy2)" }}>business profile</Link> so your documents have a proper letterhead.
             </p>}
+        </div>
+
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Classes</h2>
+            <span className="spacer" style={{ flex: 1 }} />
+            <Link href="/provider/class/new"><button className="primary">+ New class</button></Link>
+          </div>
+          <p className="muted sans" style={{ fontSize: 13, marginTop: 8 }}>
+            Set up your classes and keep a roster of the students in each, with a family contact for invoicing.
+          </p>
+          {(!classes || classes.length === 0)
+            ? <p className="muted sans" style={{ fontSize: 14, marginTop: 8 }}>No classes yet. Create your first above.</p>
+            : (
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                {classes.map(c => {
+                  const n = Array.isArray(c.students) ? c.students.length : 0;
+                  return (
+                    <Link key={c.id} href={`/provider/class/${c.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                      <div className="kid" style={{ alignItems: "center" }}>
+                        <div style={{ flex: 1 }}>
+                          <b>{c.name || "Class"}</b>
+                          <div className="muted sans" style={{ fontSize: 13 }}>
+                            {[c.service, c.term].filter(Boolean).join(" · ")}{(c.service || c.term) ? " · " : ""}{n} student{n === 1 ? "" : "s"}
+                          </div>
+                        </div>
+                        <span className="sans" style={{ fontSize: 12.5, color: "var(--navy2)" }}>Open →</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
         </div>
 
         <div className="card">
