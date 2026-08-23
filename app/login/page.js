@@ -50,7 +50,8 @@ export default function Login() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) { setErr(error.message); setBusy(false); return; }
-        router.push("/dashboard"); router.refresh(); return;
+        // /choose routes single-role accounts onward and shows dual-role a picker.
+        router.push("/choose"); router.refresh(); return;
       }
     } catch (e) {
       setErr(e.message || "Something went wrong.");

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SETTINGS } from "@/lib/rules";
-import { addKid, updateKid, deleteKid, signOut } from "./actions";
+import { addKid, updateKid, deleteKid } from "./actions";
+import HeaderMenu from "./header-menu";
 
 export function SettingSelect({ value }) {
   return (
@@ -84,32 +85,17 @@ export function KidEdit({ k }) {
 // `admin` shows an Admin link; `providerView` / `parentView` show cross-links
 // between the two views (only for accounts that have both roles).
 export function Bar({ email, settings = true, admin = false, providerView = false, parentView = false }) {
+  const items = [];
+  if (providerView) items.push({ label: "Provider view", href: "/provider" });
+  if (parentView) items.push({ label: "Parent view", href: "/dashboard" });
+  if (settings) items.push({ label: "Settings", href: "/dashboard/settings" });
+  if (admin) items.push({ label: "Admin", href: "/admin" });
   return (
     <header>
-      <img src="/wordmark.png" alt="ClearClaim" height="46" style={{ background: "#fff", borderRadius: 10, padding: "6px 13px", display: "block" }} />
+      <img src="/wordmark-white.png" alt="ClearClaim" height="42" style={{ display: "block" }} />
       <span className="spacer" />
       {email && <span className="sans hide-sm" style={{ color: "#cadaee", fontSize: 14 }}>{email}</span>}
-      {providerView && (
-        <Link href="/provider">
-          <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Provider view</button>
-        </Link>
-      )}
-      {parentView && (
-        <Link href="/dashboard">
-          <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Parent view</button>
-        </Link>
-      )}
-      {admin && (
-        <Link href="/admin">
-          <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Admin</button>
-        </Link>
-      )}
-      {settings && (
-        <Link href="/dashboard/settings">
-          <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Settings</button>
-        </Link>
-      )}
-      <form action={signOut}><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Sign out</button></form>
+      <HeaderMenu items={items} />
     </header>
   );
 }

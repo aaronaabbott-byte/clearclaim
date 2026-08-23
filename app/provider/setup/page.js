@@ -12,7 +12,7 @@ export default async function ProviderSetup() {
   return (
     <>
       <header>
-        <img src="/wordmark.png" alt="ClearClaim" height="46" style={{ background: "#fff", borderRadius: 10, padding: "6px 13px", display: "block" }} />
+        <img src="/wordmark-white.png" alt="ClearClaim" height="42" style={{ display: "block" }} />
         <span className="spacer" />
         <Link href="/provider"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Skip for now →</button></Link>
       </header>

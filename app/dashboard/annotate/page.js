@@ -11,7 +11,7 @@ export default async function Annotate() {
   return (
     <>
       <header>
-        <img src="/wordmark.png" alt="ClearClaim" height="46" style={{ background: "#fff", borderRadius: 10, padding: "6px 13px", display: "block" }} />
+        <img src="/wordmark-white.png" alt="ClearClaim" height="42" style={{ display: "block" }} />
         <span className="spacer" />
         <Link href="/dashboard"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Dashboard</button></Link>
       </header>
