@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps } from "@/lib/rules";
+import { isAdmin } from "@/lib/admin";
 import CocurricularGuide from "./cocurricular";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
@@ -36,7 +37,7 @@ export default async function Dashboard() {
   if (!hasKids) {
     return (
       <>
-        <Bar email={user.email} settings={false} />
+        <Bar email={user.email} settings={false} admin={isAdmin(user.email)} />
         <main>
           <div className="card" style={{ textAlign: "center", padding: "34px 26px" }}>
             <img src="/wordmark.png" alt="ClearClaim" style={{ width: "min(280px,70%)", margin: "0 auto 6px" }} />
@@ -62,7 +63,7 @@ export default async function Dashboard() {
 
   return (
     <>
-      <Bar email={user.email} />
+      <Bar email={user.email} admin={isAdmin(user.email)} />
       <main>
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

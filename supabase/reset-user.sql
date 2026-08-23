@@ -49,6 +49,12 @@ begin
 end;
 $$;
 
+-- Lock it down. Without this, any signed-in user could call this security-definer
+-- function through the API and wipe another account. Only the service role (used
+-- server-side by the admin panel) and the SQL editor owner may execute it.
+revoke execute on function reset_user_data(text) from public, anon, authenticated;
+grant  execute on function reset_user_data(text) to   service_role;
+
 -- Optional: fully remove a tester, account and all, so the email can start over
 -- as a brand-new signup. This deletes the auth login too (cascades to their
 -- data). Uncomment to create it, then: select delete_user_completely('x@y.com');
