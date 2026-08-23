@@ -106,6 +106,28 @@ create table if not exists preapprovals (
   created_at timestamptz default now()
 );
 
+-- Account profile: roles (parent and/or provider) plus a provider's business
+-- details for branded course documents. One row per user.
+create table if not exists profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  is_parent boolean not null default true,
+  is_provider boolean not null default false,
+  business_name text,
+  service_name text,
+  provider_name text,
+  credentials text,
+  contact_email text,
+  contact_phone text,
+  contact_website text,
+  logo_path text,                 -- object path in the 'documents' bucket, under ${user_id}/branding/
+  created_at timestamptz default now()
+);
+
+-- Mark syllabi created in the provider view (branded letterhead) so they stay
+-- separate from a parent's course syllabi.
+alter table syllabi add column if not exists branded boolean default false;
+
+alter table profiles    enable row level security;
 alter table kids        enable row level security;
 alter table vendors     enable row level security;
 alter table claims      enable row level security;
@@ -114,6 +136,7 @@ alter table documents   enable row level security;
 alter table preapprovals enable row level security;
 
 -- owner-only access
+create policy "own profile" on profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

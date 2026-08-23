@@ -45,10 +45,11 @@ export default async function Admin() {
 
   // Pull all accounts, then per-user counts (service role bypasses RLS).
   const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const [{ data: kids }, { data: claims }, { data: preapprovals }] = await Promise.all([
+  const [{ data: kids }, { data: claims }, { data: preapprovals }, { data: profiles }] = await Promise.all([
     admin.from("kids").select("user_id"),
     admin.from("claims").select("user_id"),
     admin.from("preapprovals").select("user_id"),
+    admin.from("profiles").select("user_id,is_parent,is_provider"),
   ]);
   const tally = (rows) => {
     const m = {};
@@ -56,6 +57,8 @@ export default async function Admin() {
     return m;
   };
   const kMap = tally(kids), cMap = tally(claims), pMap = tally(preapprovals);
+  const profMap = {};
+  for (const p of profiles || []) profMap[p.user_id] = p;
 
   const users = (list?.users || [])
     .map(u => ({
@@ -66,6 +69,8 @@ export default async function Admin() {
       kids: kMap[u.id] || 0,
       claims: cMap[u.id] || 0,
       preapprovals: pMap[u.id] || 0,
+      is_parent: profMap[u.id]?.is_parent ?? true,
+      is_provider: profMap[u.id]?.is_provider ?? false,
     }))
     .sort((a, b) => (b.last_sign_in_at || b.created_at || "").localeCompare(a.last_sign_in_at || a.created_at || ""));
 

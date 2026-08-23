@@ -45,6 +45,20 @@ export async function resetAccount(userId, email, confirmEmail) {
   }
 }
 
+// Add or remove the parent / provider roles on an account — for fixing an
+// accidental role choice at signup.
+export async function setUserRoles(userId, isParent, isProvider) {
+  const caller = await requireAdmin();
+  if (!caller) return { ok: false, error: "Not authorized." };
+  if (!isParent && !isProvider) return { ok: false, error: "Keep at least one role." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Service role key not configured." };
+  const { error } = await admin.from("profiles").upsert({ user_id: userId, is_parent: isParent, is_provider: isProvider });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true, message: `Roles updated: ${[isParent && "parent", isProvider && "provider"].filter(Boolean).join(" + ")}.` };
+}
+
 // Remove the account entirely (login included). Cascades to the app tables via
 // the on-delete-cascade foreign keys; we clear storage first. Same typed
 // confirmation guard.

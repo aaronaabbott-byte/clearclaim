@@ -81,13 +81,24 @@ export function KidEdit({ k }) {
 }
 
 // App header. `settings` shows a gear link; sign-out always present.
-// `admin` shows an Admin link (only passed when the signed-in user is an admin).
-export function Bar({ email, settings = true, admin = false }) {
+// `admin` shows an Admin link; `providerView` / `parentView` show cross-links
+// between the two views (only for accounts that have both roles).
+export function Bar({ email, settings = true, admin = false, providerView = false, parentView = false }) {
   return (
     <header>
       <img src="/wordmark.png" alt="ClearClaim" height="46" style={{ background: "#fff", borderRadius: 10, padding: "6px 13px", display: "block" }} />
       <span className="spacer" />
       {email && <span className="sans" style={{ color: "#cadaee", fontSize: 14 }}>{email}</span>}
+      {providerView && (
+        <Link href="/provider">
+          <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Provider view</button>
+        </Link>
+      )}
+      {parentView && (
+        <Link href="/dashboard">
+          <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Parent view</button>
+        </Link>
+      )}
       {admin && (
         <Link href="/admin">
           <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Admin</button>

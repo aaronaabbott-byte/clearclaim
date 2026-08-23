@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps } from "@/lib/rules";
 import { isAdmin } from "@/lib/admin";
+import { getProfile } from "@/lib/profile";
 import CocurricularGuide from "./cocurricular";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
@@ -10,14 +11,18 @@ import PreapprovalStatus from "./preapproval-status";
 
 export default async function Dashboard() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile } = await getProfile();
   if (!user) redirect("/login");
+  // Provider-only accounts land in the provider view.
+  if (profile?.is_provider && !profile?.is_parent) redirect("/provider");
+  const isProvider = !!profile?.is_provider;
   const { data: kids } = await supabase.from("kids").select("*")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
   const hasKids = kids && kids.length > 0;
   const { data: claims } = await supabase.from("claims").select("*").order("created_at", { ascending: false });
-  const { data: syllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term").order("created_at", { ascending: false });
+  const { data: allSyllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term,branded").order("created_at", { ascending: false });
+  const syllabi = (allSyllabi || []).filter(s => !s.branded);
   const { data: preapprovals } = await supabase.from("preapprovals").select("*").order("created_at", { ascending: false });
   const kidName = (id) => (kids || []).find(k => k.id === id)?.first_name || "—";
   const money = (n) => (n || n === 0) ? `$${Number(n).toFixed(2)}` : "—";
@@ -37,7 +42,7 @@ export default async function Dashboard() {
   if (!hasKids) {
     return (
       <>
-        <Bar email={user.email} settings={false} admin={isAdmin(user.email)} />
+        <Bar email={user.email} settings={false} admin={isAdmin(user.email)} providerView={isProvider} />
         <main>
           <div className="card" style={{ textAlign: "center", padding: "34px 26px" }}>
             <img src="/wordmark.png" alt="ClearClaim" style={{ width: "min(280px,70%)", margin: "0 auto 6px" }} />
@@ -63,7 +68,7 @@ export default async function Dashboard() {
 
   return (
     <>
-      <Bar email={user.email} admin={isAdmin(user.email)} />
+      <Bar email={user.email} admin={isAdmin(user.email)} providerView={isProvider} />
       <main>
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

@@ -5,12 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 import { efaBudgetYear } from "@/lib/rules";
 import { buildSyllabusPdf } from "@/lib/syllabus";
 
-export default function SyllabusBuilder({ kids, userId, existing }) {
+export default function SyllabusBuilder({ kids = [], userId, existing, provider = null, providerMode = false }) {
   const router = useRouter();
   const supabase = createClient();
   const editing = !!existing;
 
-  const [kidId, setKidId] = useState(existing?.kid_id || kids[0]?.id || "");
+  const [kidId, setKidId] = useState(providerMode ? "" : (existing?.kid_id || kids[0]?.id || ""));
   const [f, setF] = useState({
     title: existing?.title || "",
     subject: existing?.subject || "",
@@ -57,23 +57,37 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
     setAiBusy(false);
   }
 
+  async function providerForPdf() {
+    if (!providerMode || !provider) return null;
+    let logoDataUrl = null;
+    if (provider.logo_path) {
+      try {
+        const { data } = await supabase.storage.from("documents").download(provider.logo_path);
+        if (data) logoDataUrl = await new Promise((res) => {
+          const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(data);
+        });
+      } catch { /* skip logo on failure */ }
+    }
+    return { ...provider, logoDataUrl };
+  }
+
   async function downloadPdf() {
-    const doc = await buildSyllabusPdf({ ...f }, kid);
-    doc.save(`Syllabus-${(f.title || f.subject || "course").replace(/\W+/g, "-")}.pdf`);
+    const doc = await buildSyllabusPdf({ ...f }, kid, await providerForPdf());
+    doc.save(`${providerMode ? "Course" : "Syllabus"}-${(f.title || f.subject || "course").replace(/\W+/g, "-")}.pdf`);
   }
 
   async function save() {
     setErr(""); setMsg(""); setBusy(true);
     try {
       if (!f.title && !f.subject) { setErr("Give the course a title or subject."); setBusy(false); return; }
-      const row = { user_id: userId, kid_id: kidId || null, status: "final", ...f };
+      const row = { user_id: userId, kid_id: providerMode ? null : (kidId || null), status: "final", branded: providerMode, ...f };
       let error;
       if (editing) ({ error } = await supabase.from("syllabi").update(row).eq("id", existing.id));
       else ({ error } = await supabase.from("syllabi").insert(row));
       if (error) { setErr("Could not save: " + error.message); setBusy(false); return; }
       setMsg("Saved.");
       router.refresh();
-      setTimeout(() => router.push("/dashboard"), 900);
+      setTimeout(() => router.push(providerMode ? "/provider" : "/dashboard"), 900);
     } catch (e) { setErr(e.message || "Something went wrong."); }
     setBusy(false);
   }
@@ -86,13 +100,13 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
         title: (f.title || f.subject || "Course") + " (copy)" };
       const { data, error } = await supabase.from("syllabi").insert(row).select("id").single();
       if (error) { setErr("Could not duplicate: " + error.message); setBusy(false); return; }
-      router.push(`/dashboard/syllabus/${data.id}`);
+      router.push(`${providerMode ? "/provider/document" : "/dashboard/syllabus"}/${data.id}`);
       router.refresh();
     } catch (e) { setErr(e.message || "Something went wrong."); }
     setBusy(false);
   }
 
-  if (!kids.length) {
+  if (!kids.length && !providerMode) {
     return <div className="card"><p className="sans">Add a student first, then build a syllabus.</p></div>;
   }
 
@@ -105,19 +119,22 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
 
   return (
     <div className="card">
-      <h2>{editing ? "Edit syllabus" : "Build a syllabus"}</h2>
+      <h2>{editing ? (providerMode ? "Edit course document" : "Edit syllabus") : (providerMode ? "New course document" : "Build a syllabus")}</h2>
       <p className="muted sans" style={{ fontSize: 14, marginTop: -4 }}>
-        A course syllabus is the strongest proof of educational use. Fill the basics, let AI draft the rest,
-        edit freely, then save and download a clean PDF to submit.
+        {providerMode
+          ? "Create a branded course document. Fill the basics, let AI draft the rest, edit freely, then download a PDF with your letterhead."
+          : "A course syllabus is the strongest proof of educational use. Fill the basics, let AI draft the rest, edit freely, then save and download a clean PDF to submit."}
       </p>
 
       <div className="row" style={{ marginTop: 10 }}>
-        <div><label>Student</label>
-          <select value={kidId} onChange={e => setKidId(e.target.value)}>
-            <option value="">Unassigned — reusable template</option>
-            {kids.map(k => <option key={k.id} value={k.id}>{k.first_name}{k.grade ? ` (grade ${k.grade})` : ""}</option>)}
-          </select>
-        </div>
+        {!providerMode && (
+          <div><label>Student</label>
+            <select value={kidId} onChange={e => setKidId(e.target.value)}>
+              <option value="">Unassigned — reusable template</option>
+              {kids.map(k => <option key={k.id} value={k.id}>{k.first_name}{k.grade ? ` (grade ${k.grade})` : ""}</option>)}
+            </select>
+          </div>
+        )}
         <div><label>Course title</label><input value={f.title} onChange={e => set("title", e.target.value)} placeholder="e.g. 5th-Grade Latin" /></div>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
@@ -161,7 +178,7 @@ export default function SyllabusBuilder({ kids, userId, existing }) {
         <button className="primary" disabled={busy} onClick={save}>{busy ? "Saving…" : editing ? "Save changes" : "Save syllabus"}</button>
         {editing && <button type="button" disabled={busy} onClick={duplicate}>Duplicate</button>}
         <button type="button" onClick={downloadPdf}>Download PDF</button>
-        <button type="button" onClick={() => router.push("/dashboard")} style={{ marginLeft: "auto" }}>Cancel</button>
+        <button type="button" onClick={() => router.push(providerMode ? "/provider" : "/dashboard")} style={{ marginLeft: "auto" }}>Cancel</button>
       </div>
     </div>
   );

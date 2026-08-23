@@ -9,6 +9,8 @@ export default function Login() {
   const [mode, setMode] = useState("signin"); // signin | signup
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isParent, setIsParent] = useState(true);
+  const [isProvider, setIsProvider] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
@@ -30,17 +32,20 @@ export default function Login() {
     try {
       if (mode === "signup") {
         if (password.length < 8) { setErr("Use a password of at least 8 characters."); setBusy(false); return; }
+        if (!isParent && !isProvider) { setErr("Pick at least one: parent or provider."); setBusy(false); return; }
         const { data, error } = await supabase.auth.signUp({
           email, password,
           options: { emailRedirectTo: `${location.origin}/auth/callback` },
         });
         if (error) { setErr(error.message); setBusy(false); return; }
         if (data.session) {
-          // Email confirmation is off — signed in right away.
-          router.push("/dashboard"); router.refresh(); return;
+          // Email confirmation is off — signed in right away. Record roles.
+          await supabase.from("profiles").upsert({ user_id: data.user.id, is_parent: isParent, is_provider: isProvider });
+          const dest = (isProvider && !isParent) ? "/provider/setup" : isProvider ? "/provider/setup" : "/dashboard";
+          router.push(dest); router.refresh(); return;
         }
         // Email confirmation is on — user must verify before signing in.
-        setNote("Account created. Check your email to confirm it, then sign in.");
+        setNote("Account created. Check your email to confirm it, then sign in. You can finish your provider setup after you sign in.");
         setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -78,6 +83,22 @@ export default function Login() {
         <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
           placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
           autoComplete={mode === "signup" ? "new-password" : "current-password"} />
+
+        {mode === "signup" && (
+          <div style={{ textAlign: "left", marginTop: 14 }}>
+            <label style={{ display: "block", marginBottom: 6 }}>I'm using ClearClaim as a…</label>
+            <label className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, cursor: "pointer", marginBottom: 6 }}>
+              <input type="checkbox" checked={isParent} onChange={e => setIsParent(e.target.checked)} style={{ width: 17, height: 17 }} />
+              Parent / guardian — track my students and build reimbursement claims
+            </label>
+            <label className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, cursor: "pointer" }}>
+              <input type="checkbox" checked={isProvider} onChange={e => setIsProvider(e.target.checked)} style={{ width: 17, height: 17 }} />
+              Provider / vendor — create branded course documents for the families I serve
+            </label>
+            <p className="muted sans" style={{ fontSize: 12, marginTop: 6 }}>Pick both if you're a parent who also provides services. You can change this later in Settings.</p>
+          </div>
+        )}
+
         <button className="primary" disabled={busy} style={{ width: "100%", marginTop: 16 }}>
           {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
         </button>
