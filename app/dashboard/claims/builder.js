@@ -35,7 +35,7 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
   // Reported-practice flag (not a 6 CAR Part 35 rule): families say services,
   // tutoring, and Direct Pay tend to want the student's name on the invoice,
   // while parent-name receipts are generally fine for physical supplies.
-  const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson/i.test(category || "");
+  const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson|tuition|therapy/i.test(category || "");
 
   const claim = { vendor, pathway, amount, date, category, items, purpose, reasoning,
     receipt_count: receipts.length, payment_count: payments.length };
