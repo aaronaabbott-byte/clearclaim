@@ -92,7 +92,7 @@ export default function Landing() {
       </nav>
 
       {/* ---------- hero ---------- */}
-      <header className="lp-hero">
+      <section className="lp-hero">
         <div className="lp-wrap lp-hero-grid">
           <div>
             <span className="lp-eyebrow">Arkansas EFA</span>
@@ -165,7 +165,7 @@ export default function Landing() {
             </div>
           </div>
         </div>
-      </header>
+      </section>
 
       {/* ---------- who it's for ---------- */}
       <section className="lp-section">
