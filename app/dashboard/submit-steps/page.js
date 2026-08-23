@@ -15,6 +15,18 @@ const STEPS = [
   { t: "Confirm it posted", d: "The student's balance should drop by exactly the amount you submitted. One submission per receipt, so repeat these steps for each receipt and each student." },
 ];
 
+const DOC_MATRIX = [
+  ["Mileage to a class", "Mileage log, a Google Maps route screenshot, and proof of attendance."],
+  ["Mileage to a field trip", "Mileage log, a Google Maps route screenshot, and a receipt or other proof of attendance."],
+  ["Reimbursement to a vendor", "Receipt showing a $0 balance (paid in full), plus a note on how it fits the student's educational goals."],
+  ["Reimbursement to a non-vendor", "Receipt showing a $0 balance, plus a secondary proof of payment (a bank or card statement screenshot)."],
+  ["Reimbursement of supplies", "Receipt showing a $0 balance — circle the last four of the card if it's clearly shown, otherwise add a secondary proof of payment — plus how the supplies are used or proof the curriculum requires them."],
+  ["Reimbursement of curriculum", "Receipt showing a $0 balance. If the card info isn't clear enough to circle or highlight, add a secondary proof of payment."],
+  ["Field trip reimbursement", "Confirm the trip is on the approved trip list first (get it added if not; pre-approval is usually needed if it isn't a vendor). Receipt with a $0 balance and the card info circled, or a secondary proof of payment if the card isn't visible."],
+  ["Direct Pay — a service", "Link the vendor with a payment request when you can. Otherwise a precise invoice with the student's name, service date, line-item descriptions, and the charge per service. Check whether it's co-curricular or extracurricular first."],
+  ["Direct Pay / Marketplace — a product", "Link the vendor with a payment request when you can. Otherwise a precise invoice with each item described, plus proof of need — a curriculum supply list, or how the item meets specific learning objectives."],
+];
+
 const TIPS = [
   "The receipt must show a real date, not 'Today', plus the store name and the payment method.",
   "Always include a proof-of-payment screenshot, and it is essentially required for PayPal orders.",
@@ -58,7 +70,17 @@ export default async function SubmitSteps() {
             ))}
           </ol>
 
-          <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", marginTop: 6 }}>A few things that prevent rejections</h3>
+          <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", marginTop: 6 }}>What to attach, by submission type</h3>
+          <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+            {DOC_MATRIX.map(([type, docs], i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(160px, 220px) 1fr", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", alignItems: "start" }}>
+                <div className="sans" style={{ fontWeight: 700, fontSize: 13.5, color: "var(--navy)" }}>{type}</div>
+                <div className="sans" style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.5 }}>{docs}</div>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", marginTop: 18 }}>A few things that prevent rejections</h3>
           <ul className="sans" style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ink)" }}>
             {TIPS.map((t, i) => <li key={i} style={{ marginBottom: 6 }}>{t}</li>)}
           </ul>

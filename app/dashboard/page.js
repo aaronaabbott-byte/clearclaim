@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps } from "@/lib/rules";
 import { isAdmin } from "@/lib/admin";
 import { getProfile } from "@/lib/profile";
+import { schoolYearLabel } from "@/lib/compliance";
+import ComplianceTracker from "./compliance";
 import CocurricularGuide from "./cocurricular";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
@@ -24,6 +26,12 @@ export default async function Dashboard() {
   const { data: allSyllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term,branded").order("created_at", { ascending: false });
   const syllabi = (allSyllabi || []).filter(s => !s.branded);
   const { data: preapprovals } = await supabase.from("preapprovals").select("*").order("created_at", { ascending: false });
+  const hasHomeschool = (kids || []).some(k => k.setting === "homeschool");
+  let complianceDone = {};
+  if (hasHomeschool) {
+    const { data: comp } = await supabase.from("compliance").select("item_key,done").eq("school_year", schoolYearLabel());
+    for (const r of comp || []) complianceDone[r.item_key] = r.done;
+  }
   const kidName = (id) => (kids || []).find(k => k.id === id)?.first_name || "—";
   const money = (n) => (n || n === 0) ? `$${Number(n).toFixed(2)}` : "—";
   const settingLabel = (v) => (SETTINGS.find(s => s.value === v) || {}).label || v;
@@ -209,6 +217,8 @@ export default async function Dashboard() {
         </div>
 
         <CocurricularGuide />
+
+        {hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
 
         <div className="card">
           <h2>Budget this year <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· {BY.label}</span></h2>

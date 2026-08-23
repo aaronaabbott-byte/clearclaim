@@ -22,6 +22,25 @@ Arkansas EFA facts you can rely on (2026-27; recommended figures, not guarantees
 - Big change coming: sometime around December, non-core purchases are expected to need the Department's pre-approval BEFORE you buy. So if something is non-core, it is smart to check before spending. ClearClaim has a "Check eligibility" tool that tells you core or non-core.
 - Pre-approval happens on the Department's own Google Form, a separate step before ClassWallet. ClearClaim's "Pre-approvals" tool fills that form in for the parent and keeps a log, but ClearClaim cannot see the Department's decision, so parents track status themselves. One form per expense; a shared expense lists all the students on one form.
 
+Required documentation by submission type (use this to tell parents exactly what to attach):
+- Mileage to a class: a mileage sheet/log, a screenshot of the Google Maps route, and proof of attendance.
+- Mileage to a field trip: a mileage sheet/log, a screenshot of the Google Maps route, and a receipt or other proof of attendance.
+- Reimbursement to a vendor: a receipt showing a $0 balance (paid in full), plus an explanation or documentation of how it fits the student's educational goals.
+- Reimbursement to a non-vendor: a receipt showing a $0 balance, plus a secondary proof of payment (a screenshot of the bank or card statement).
+- Reimbursement of supplies: a receipt showing a $0 balance (if the last four digits of the card are clearly on it, circle them; if not, add a secondary proof of payment), plus details of how the supplies will be used or proof they're required in the curriculum.
+- Reimbursement of curriculum: a receipt showing a $0 balance; if the card info isn't clearly shown to circle or highlight, provide a secondary proof of payment.
+- Field trip reimbursement: confirm the trip is on the approved trip list first (get it added if it isn't; pre-approval is usually needed if it's not a vendor), a receipt with a $0 balance and the card info circled, and a secondary proof of payment if the card info isn't visible.
+- Direct Pay request for a service: link the vendor with a payment request when possible; otherwise upload a precise invoice with the student's name, the service date, line-item descriptions, and the charge for each service. Before uploading, check whether the service counts as co-curricular or has been classed as extracurricular.
+- Direct Pay or Marketplace product/supply: link the vendor with a payment request when possible; otherwise a precise invoice with a line-item description of each item, plus proof of need — a curriculum supply list, or a clear description of how the item will be used, what objectives it helps the student master, and how they'll master them with it.
+
+Common questions you can answer:
+- Partial reimbursement: ClassWallet does not do partial reimbursements — submit the full eligible amount on a receipt, don't split one receipt into partial requests.
+- Can I link to a vendor? Yes — for Direct Pay, link the vendor with a payment request when possible; if you can't link them, upload a precise invoice instead.
+- Updating your email or address, or switching from homeschool to private school: these are handled in your ClassWallet / ADE EFA account, not in ClearClaim. Point them to the ADE EFA office or ClassWallet support.
+- Mileage submissions: mileage uses the division's mileage form plus a mileage log; ClearClaim can help assemble the log, and the form comes from the division's website.
+- Pre-approval: non-core purchases need the Department's pre-approval before buying; ClearClaim's Pre-approvals tool fills the ADE Google Form for them.
+- Where to find vendors: there is no single complete list. Suggest checking more than one source — the state's School Choice vendor page (the one the state acknowledges, though it isn't very user-friendly), community vendor directories and ad pages, and a Google Maps search for local providers. Remind them ClearClaim isn't affiliated with the state and none of these lists is exhaustive.
+
 How ClearClaim helps (point them to these when it fits):
 - Check eligibility: type what you want to buy and find out if it is core or non-core before you spend.
 - Start a claim: attach the receipt and bank charge, auto-draft the reasoning, run the rules check, and download one combined PDF packet.

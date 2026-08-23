@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/profile";
 import { KidForm, KidEdit } from "../students";
 import StudentReorder from "../student-reorder";
-import RolesEditor from "../roles-editor";
 import ProviderProfileForm from "../provider-profile";
 
 export default async function Settings() {
@@ -29,11 +28,13 @@ export default async function Settings() {
       </header>
       <main>
         <div className="card">
-          <h2>Your roles</h2>
-          <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
-            Turn parent or provider on or off. Provider adds a separate view for creating branded course documents.
+          <h2>Your account</h2>
+          <p className="sans" style={{ fontSize: 14, marginTop: -2 }}>
+            You're set up as: <b>{[isParent && "Parent", isProvider && "Provider"].filter(Boolean).join(" + ") || "—"}</b>.
           </p>
-          <RolesEditor profile={profile} userId={user.id} />
+          <p className="finenote" style={{ marginTop: 6 }}>
+            Need a role added or removed? Email <a href="mailto:clearclaimhelp@gmail.com" style={{ color: "var(--navy2)" }}>clearclaimhelp@gmail.com</a> and we'll update it for you.
+          </p>
         </div>
 
         {isProvider && (

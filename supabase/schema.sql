@@ -127,7 +127,21 @@ create table if not exists profiles (
 -- separate from a parent's course syllabi.
 alter table syllabi add column if not exists branded boolean default false;
 
+-- Homeschool compliance tracker: which yearly items a family has completed.
+-- One row per (user, item, school year). Presence with done=true = completed.
+create table if not exists compliance (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  item_key text not null,
+  school_year text not null,
+  done boolean not null default true,
+  done_date date,
+  created_at timestamptz default now(),
+  unique (user_id, item_key, school_year)
+);
+
 alter table profiles    enable row level security;
+alter table compliance  enable row level security;
 alter table kids        enable row level security;
 alter table vendors     enable row level security;
 alter table claims      enable row level security;
@@ -137,6 +151,7 @@ alter table preapprovals enable row level security;
 
 -- owner-only access
 create policy "own profile" on profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own compliance" on compliance for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
