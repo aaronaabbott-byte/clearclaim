@@ -45,11 +45,16 @@ export default async function Admin() {
 
   // Pull all accounts, then per-user counts (service role bypasses RLS).
   const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const [{ data: kids }, { data: claims }, { data: preapprovals }, { data: profiles }] = await Promise.all([
+  const [{ data: kids }, { data: claims }, { data: preapprovals }, { data: profiles },
+    { data: classes }, { data: invoices }, { data: syllabi }, { data: pItems }] = await Promise.all([
     admin.from("kids").select("user_id"),
     admin.from("claims").select("user_id"),
     admin.from("preapprovals").select("user_id"),
     admin.from("profiles").select("user_id,is_parent,is_provider"),
+    admin.from("classes").select("user_id"),
+    admin.from("invoices").select("user_id,total"),
+    admin.from("syllabi").select("user_id,branded"),
+    admin.from("provider_items").select("user_id"),
   ]);
   const tally = (rows) => {
     const m = {};
@@ -57,6 +62,11 @@ export default async function Admin() {
     return m;
   };
   const kMap = tally(kids), cMap = tally(claims), pMap = tally(preapprovals);
+  const classMap = tally(classes), itemMap = tally(pItems);
+  const invMap = {}, invSum = {};
+  for (const r of invoices || []) { invMap[r.user_id] = (invMap[r.user_id] || 0) + 1; invSum[r.user_id] = (invSum[r.user_id] || 0) + (Number(r.total) || 0); }
+  const docMap = {};
+  for (const r of syllabi || []) if (r.branded) docMap[r.user_id] = (docMap[r.user_id] || 0) + 1;
   const profMap = {};
   for (const p of profiles || []) profMap[p.user_id] = p;
 
@@ -71,6 +81,11 @@ export default async function Admin() {
       preapprovals: pMap[u.id] || 0,
       is_parent: profMap[u.id]?.is_parent ?? true,
       is_provider: profMap[u.id]?.is_provider ?? false,
+      p_classes: classMap[u.id] || 0,
+      p_invoices: invMap[u.id] || 0,
+      p_invoice_total: invSum[u.id] || 0,
+      p_docs: docMap[u.id] || 0,
+      p_items: itemMap[u.id] || 0,
     }))
     .sort((a, b) => (b.last_sign_in_at || b.created_at || "").localeCompare(a.last_sign_in_at || a.created_at || ""));
 

@@ -22,6 +22,7 @@ export default function AdminRow({ u }) {
 
   const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
   const date = (s) => s ? new Date(s).toLocaleDateString() : "—";
+  const datetime = (s) => s ? new Date(s).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "never";
 
   async function run() {
     setBusy(true); setNote(null);
@@ -44,8 +45,16 @@ export default function AdminRow({ u }) {
           <b className="sans" style={{ fontSize: 14.5 }}>{u.email}</b>
           <div className="muted sans" style={{ fontSize: 12.5 }}>
             <span style={{ color: "var(--navy2)", fontWeight: 700 }}>{[u.is_parent && "Parent", u.is_provider && "Provider"].filter(Boolean).join(" + ") || "No role"}</span>
-            {" · "}{u.kids} student{u.kids === 1 ? "" : "s"} · {u.claims} claim{u.claims === 1 ? "" : "s"} · {u.preapprovals} pre-approval{u.preapprovals === 1 ? "" : "s"}
-            {" · "}joined {date(u.created_at)}{u.last_sign_in_at ? ` · last in ${date(u.last_sign_in_at)}` : ""}
+            {u.is_parent ? <> · {u.kids} student{u.kids === 1 ? "" : "s"} · {u.claims} claim{u.claims === 1 ? "" : "s"} · {u.preapprovals} pre-approval{u.preapprovals === 1 ? "" : "s"}</> : null}
+          </div>
+          {u.is_provider && (
+            <div className="muted sans" style={{ fontSize: 12.5, marginTop: 2 }}>
+              <span style={{ color: "var(--gold)", fontWeight: 700 }}>Provider</span>{" · "}
+              {u.p_classes} class{u.p_classes === 1 ? "" : "es"} · {u.p_docs} doc{u.p_docs === 1 ? "" : "s"} · {u.p_items} menu item{u.p_items === 1 ? "" : "s"} · {u.p_invoices} invoice{u.p_invoices === 1 ? "" : "s"}{u.p_invoice_total ? ` (${money(u.p_invoice_total)})` : ""}
+            </div>
+          )}
+          <div className="muted sans" style={{ fontSize: 12, marginTop: 3 }}>
+            Last access: <b style={{ color: "var(--ink)" }}>{datetime(u.last_sign_in_at)}</b> · joined {date(u.created_at)}
           </div>
         </div>
         {mode === null && (
