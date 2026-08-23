@@ -88,7 +88,7 @@ export function Bar({ email, settings = true, admin = false, providerView = fals
     <header>
       <img src="/wordmark.png" alt="ClearClaim" height="46" style={{ background: "#fff", borderRadius: 10, padding: "6px 13px", display: "block" }} />
       <span className="spacer" />
-      {email && <span className="sans" style={{ color: "#cadaee", fontSize: 14 }}>{email}</span>}
+      {email && <span className="sans hide-sm" style={{ color: "#cadaee", fontSize: 14 }}>{email}</span>}
       {providerView && (
         <Link href="/provider">
           <button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>Provider view</button>

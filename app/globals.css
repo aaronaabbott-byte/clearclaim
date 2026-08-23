@@ -33,3 +33,16 @@ button.primary{background:var(--navy2);color:#fff;border-color:var(--navy2)}
 .sitefoot a{color:var(--navy2);text-decoration:none}
 .sitefoot a:hover{text-decoration:underline}
 .finenote{font:400 12px/1.5 var(--sans);color:var(--muted);margin-top:8px}
+
+/* Header wraps rather than overflowing, and shrinks on small screens. */
+header{flex-wrap:wrap}
+@media (max-width:600px){
+  header{padding:12px 14px;gap:8px}
+  header .hide-sm{display:none}
+  header img{height:38px !important}
+  header button{padding:7px 11px;font-size:13.5px}
+  main{padding:18px 14px}
+  .card{padding:16px}
+  h2{font-size:20px}
+  .authcard{padding:30px 20px}
+}
