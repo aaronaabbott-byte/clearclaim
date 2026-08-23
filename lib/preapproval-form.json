@@ -1,0 +1,16 @@
+{
+  "note": "Arkansas Department of Education 'EFA Expense Preapproval Request' Google Form. Entry IDs verified by a live prefill test on 2026-08-22. If ADE edits the form, an entry id can change; update it here only.",
+  "formTitle": "EFA Expense Preapproval Request",
+  "viewUrl": "https://docs.google.com/forms/d/e/1FAIpQLSdVfJmztt3u5LcN86X1eHW18u79YjNy_J0dYGWsy0bi48JF6Q/viewform",
+  "emailParam": "emailAddress",
+  "entries": {
+    "parentName": "entry.1662121990",
+    "reenterEmail": "entry.803357748",
+    "students": "entry.1235496151",
+    "description": "entry.268783741",
+    "cost": "entry.1212369722",
+    "justification": "entry.1825209124",
+    "link": "entry.1979013629"
+  },
+  "sendCopyIsUrlSettable": false
+}
