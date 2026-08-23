@@ -84,8 +84,7 @@ export function KidEdit({ k }) {
 export function Bar({ email, settings = true }) {
   return (
     <header>
-      <img src="/icon.png" alt="" width="38" height="38" style={{ borderRadius: 10, background: "#fff", padding: 3 }} />
-      <h1>ClearClaim</h1>
+      <img src="/wordmark.png" alt="ClearClaim" height="30" style={{ background: "#fff", borderRadius: 10, padding: "5px 10px", display: "block" }} />
       <span className="spacer" />
       {email && <span className="sans" style={{ color: "#cadaee", fontSize: 14 }}>{email}</span>}
       {settings && (
