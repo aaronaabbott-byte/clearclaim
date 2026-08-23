@@ -1,48 +1,78 @@
 :root{
   --navy:#16324e;--navy2:#1f4e78;--blue:#2e75b6;--gold:#c68a1c;
-  --paper:#f7f4ee;--card:#fff;--ink:#22262e;--muted:#71767f;--line:#e8e3d8;--teal:#0f766e;--red:#b3261e;
+  --paper:#f6f3ec;--card:#fff;--ink:#1f2530;--muted:#6b7280;--line:#e9e4d8;--teal:#0f766e;--red:#b3261e;
   --serif:Garamond,"EB Garamond","Palatino Linotype",Georgia,serif;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --sh:0 1px 2px rgba(20,30,45,.05),0 8px 24px rgba(20,30,45,.06);
+  --sh:0 1px 2px rgba(20,30,45,.04),0 10px 30px rgba(20,30,45,.06);
+  --ring:0 0 0 3px rgba(31,78,120,.16);
+  --radius:16px;
 }
 *{box-sizing:border-box}
-body{margin:0;font:18px/1.6 var(--serif);background:var(--paper);color:var(--ink)}
+body{margin:0;font:17.5px/1.6 var(--serif);
+  background:radial-gradient(1100px 460px at 50% -160px,#eef2f8,transparent),var(--paper);
+  color:var(--ink);-webkit-font-smoothing:antialiased}
 button,input,select,textarea,label,.sans{font-family:var(--sans)}
-a{color:var(--navy2)}
-header{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;padding:16px 26px;display:flex;align-items:center;gap:12px}
+a{color:var(--navy2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header */
+header{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;
+  padding:14px 26px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  box-shadow:0 2px 16px rgba(16,50,78,.20)}
 header h1{font-family:var(--serif);font-size:24px;margin:0;font-weight:600}
 .mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--gold),#e0a83c);display:flex;align-items:center;justify-content:center;color:#3a2a06;font-weight:800}
 .spacer{flex:1}
-main{max-width:900px;margin:0 auto;padding:24px 20px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:var(--sh)}
-h2{font-family:var(--serif);font-size:22px;margin:0 0 10px}
-label{display:block;font:600 12.5px var(--sans);color:var(--muted);margin-bottom:5px}
-input,select,textarea{font:inherit;font-size:15px;padding:10px 12px;border:1px solid #ddd6c8;border-radius:9px;width:100%;background:#fff}
-button{font:inherit;font-size:15px;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:#fff;padding:9px 15px}
-button.primary{background:var(--navy2);color:#fff;border-color:var(--navy2)}
+
+main{max-width:920px;margin:0 auto;padding:26px 20px}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;margin-bottom:16px;box-shadow:var(--sh)}
+h2{font-family:var(--serif);font-size:23px;line-height:1.2;margin:0 0 10px;letter-spacing:.2px;color:var(--navy)}
+h3{color:var(--navy)}
+
+/* Forms */
+label{display:block;font:600 12px var(--sans);letter-spacing:.3px;text-transform:none;color:var(--muted);margin-bottom:6px}
+input,select,textarea{font:inherit;font-size:15px;padding:11px 13px;border:1px solid #ddd6c8;border-radius:11px;width:100%;background:#fff;color:var(--ink);transition:border-color .15s ease,box-shadow .15s ease}
+input::placeholder,textarea::placeholder{color:#a9a99f}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy2);box-shadow:var(--ring)}
+
+/* Buttons */
+button{font:inherit;font-size:15px;cursor:pointer;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 16px;font-weight:600;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .05s ease}
+button:hover{background:#faf8f3;border-color:#d7d0bf}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.55;cursor:default;transform:none}
+button.primary{background:var(--navy2);color:#fff;border-color:var(--navy2);box-shadow:0 1px 2px rgba(20,30,45,.12)}
+button.primary:hover{background:#194066;border-color:#194066}
+
 .row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:150px}
 .muted{color:var(--muted)}
+
+/* Auth */
 .authwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(1200px 500px at 50% -10%,#e9eef6,transparent),var(--paper)}
-.authcard{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 20px 60px rgba(20,30,45,.14);padding:40px 38px;max-width:420px;width:100%;text-align:center}
+.authcard{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 70px rgba(20,30,45,.16);padding:40px 38px;max-width:430px;width:100%;text-align:center}
 .authcard .mark{width:52px;height:52px;border-radius:14px;font-size:24px;margin:0 auto 14px}
 .authcard h1{font-family:var(--serif);font-size:32px;margin:0 0 2px}
 .authcard .tag{color:var(--muted);margin-bottom:22px;display:block}
-.kid{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fff;box-shadow:var(--sh)}
+
+/* Rows / list items */
+.kid{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:10px;background:#fff;box-shadow:0 1px 2px rgba(20,30,45,.04);transition:border-color .15s ease,box-shadow .15s ease}
+.kid:hover{border-color:#dcd5c6;box-shadow:0 2px 4px rgba(20,30,45,.05),0 8px 20px rgba(20,30,45,.05)}
+
 .sitefoot{font:400 12px/1.55 var(--sans);color:var(--muted);text-align:center;padding:24px 20px 34px;max-width:840px;margin:0 auto}
 .sitefoot a{color:var(--navy2);text-decoration:none}
 .sitefoot a:hover{text-decoration:underline}
 .finenote{font:400 12px/1.5 var(--sans);color:var(--muted);margin-top:8px}
 
-/* Header wraps rather than overflowing, and shrinks on small screens. */
-header{flex-wrap:wrap}
+/* Small screens */
 @media (max-width:600px){
   header{padding:12px 14px;gap:8px}
   header .hide-sm{display:none}
   header img{height:38px !important}
-  header button{padding:7px 11px;font-size:13.5px}
+  header button{padding:8px 12px;font-size:13.5px}
   main{padding:18px 14px}
-  .card{padding:16px}
+  .card{padding:16px;border-radius:14px}
   h2{font-size:20px}
   .authcard{padding:30px 20px}
 }

@@ -141,6 +141,18 @@ export default async function Dashboard() {
 
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0 }}>Receipt vault</h2>
+            <span className="spacer" />
+            <Link href="/dashboard/receipts"><button className="primary">Open receipts</button></Link>
+          </div>
+          <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
+            File receipts by student as you get them and track what's been claimed. Everything stays sorted, so building
+            a claim is just picking from your shoebox instead of hunting for receipts.
+          </p>
+        </div>
+
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h2 style={{ margin: 0 }}>Claims</h2>
             <span className="spacer" />
             <Link href="/dashboard/claims/new"><button className="primary">+ Start a claim</button></Link>

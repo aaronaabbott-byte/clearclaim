@@ -13,6 +13,12 @@ export default async function NewClaim({ searchParams }) {
   const { data: claims } = await supabase.from("claims").select("id,kid_id,category,amount,date,created_at");
   const initialItems = (searchParams?.items || "").toString();
   const initialNote = (searchParams?.note || "").toString();
+  const prefill = {
+    kidId: (searchParams?.kid || "").toString(),
+    vendor: (searchParams?.vendor || "").toString(),
+    amount: (searchParams?.amount || "").toString(),
+    category: (searchParams?.category || "").toString(),
+  };
 
   return (
     <>
@@ -23,7 +29,7 @@ export default async function NewClaim({ searchParams }) {
       </header>
       <main>
         <ClaimBuilder kids={kids || []} userId={user.id} claims={claims || []}
-          initialItems={initialItems} initialNote={initialNote} />
+          initialItems={initialItems} initialNote={initialNote} prefill={prefill} />
       </main>
     </>
   );

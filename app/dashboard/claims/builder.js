@@ -9,16 +9,16 @@ import { buildPacketPdfs } from "@/lib/packet";
 const DOT = { ok: "var(--teal)", warn: "var(--gold)", fail: "var(--red)" };
 const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
-export default function ClaimBuilder({ kids, userId, claims = [], initialItems = "", initialNote = "" }) {
+export default function ClaimBuilder({ kids, userId, claims = [], initialItems = "", initialNote = "", prefill = {} }) {
   const router = useRouter();
   const supabase = createClient();
 
-  const [kidId, setKidId] = useState(kids[0]?.id || "");
+  const [kidId, setKidId] = useState((prefill.kidId && kids.some(k => k.id === prefill.kidId)) ? prefill.kidId : (kids[0]?.id || ""));
   const [pathway, setPathway] = useState("reimbursement");
-  const [vendor, setVendor] = useState("");
-  const [amount, setAmount] = useState("");
+  const [vendor, setVendor] = useState(prefill.vendor || "");
+  const [amount, setAmount] = useState(prefill.amount || "");
   const [date, setDate] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(prefill.category || "");
   const [items, setItems] = useState(initialItems);
   const [purpose, setPurpose] = useState(initialNote);
   const [reasoning, setReasoning] = useState("");

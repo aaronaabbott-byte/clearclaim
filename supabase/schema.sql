@@ -143,6 +143,25 @@ create table if not exists classes (
   created_at timestamptz default now()
 );
 
+-- Receipt vault: a sorted "shoebox" of receipts, filed by student (or shared),
+-- with a status so parents can see what's been claimed. Files live in the
+-- 'documents' bucket under ${user_id}/receipts/.
+create table if not exists receipts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  kid_id uuid references kids(id) on delete set null,   -- null with shared=true means multiple students
+  shared boolean default false,
+  vendor text,
+  category text,
+  receipt_date date,
+  amount numeric(10,2),
+  status text default 'unfiled',                         -- unfiled | claimed | submitted | approved | denied
+  note text,
+  path text,
+  filename text,
+  created_at timestamptz default now()
+);
+
 -- Homeschool compliance tracker: which yearly items a family has completed.
 -- One row per (user, item, school year). Presence with done=true = completed.
 create table if not exists compliance (
@@ -159,6 +178,7 @@ create table if not exists compliance (
 alter table profiles    enable row level security;
 alter table compliance  enable row level security;
 alter table classes     enable row level security;
+alter table receipts    enable row level security;
 alter table kids        enable row level security;
 alter table vendors     enable row level security;
 alter table claims      enable row level security;
@@ -170,6 +190,7 @@ alter table preapprovals enable row level security;
 create policy "own profile" on profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own compliance" on compliance for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own classes" on classes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own receipts" on receipts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own claims"  on claims  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
