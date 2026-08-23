@@ -8,7 +8,9 @@ export default async function EligibilityPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("id,first_name,program_start_year").order("created_at");
+  const { data: kids } = await supabase.from("kids").select("id,first_name,program_start_year")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
 
   return (
     <>

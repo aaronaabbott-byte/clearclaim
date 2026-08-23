@@ -7,7 +7,9 @@ export default async function Documents() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("id,first_name").order("created_at");
+  const { data: kids } = await supabase.from("kids").select("id,first_name")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
   const { data: documents } = await supabase.from("documents").select("*").order("created_at", { ascending: false });
 
   return (

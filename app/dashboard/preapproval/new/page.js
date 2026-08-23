@@ -8,7 +8,9 @@ export default async function NewPreapproval({ searchParams }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: rawKids } = await supabase.from("kids").select("id,first_name,grade,prior_tech").order("created_at");
+  const { data: rawKids } = await supabase.from("kids").select("id,first_name,grade,prior_tech")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
   const { data: claims } = await supabase.from("claims").select("kid_id,category,amount,date,created_at");
   const BY = efaBudgetYear();
   const techUsed = (kidId) => (claims || [])

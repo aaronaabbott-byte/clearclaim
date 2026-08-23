@@ -50,6 +50,20 @@ export async function deleteKid(formData) {
   revalidatePath("/dashboard/settings");
 }
 
+// Persist a new student display order. `ids` is the full list of kid ids in the
+// order the parent arranged them; each row's sort_order is set to its index.
+export async function reorderKids(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return;
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await Promise.all(ids.map((id, i) =>
+    supabase.from("kids").update({ sort_order: i }).eq("id", id).eq("user_id", user.id)
+  ));
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
+}
+
 export async function signOut() {
   const supabase = createClient();
   await supabase.auth.signOut();

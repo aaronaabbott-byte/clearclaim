@@ -11,7 +11,9 @@ export default async function Dashboard() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("*").order("created_at");
+  const { data: kids } = await supabase.from("kids").select("*")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
   const hasKids = kids && kids.length > 0;
   const { data: claims } = await supabase.from("claims").select("*").order("created_at", { ascending: false });
   const { data: syllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term").order("created_at", { ascending: false });

@@ -7,7 +7,9 @@ export default async function NewClaim({ searchParams }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("*").order("created_at");
+  const { data: kids } = await supabase.from("kids").select("*")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
   const { data: claims } = await supabase.from("claims").select("id,kid_id,category,amount,date,created_at");
   const initialItems = (searchParams?.items || "").toString();
   const initialNote = (searchParams?.note || "").toString();

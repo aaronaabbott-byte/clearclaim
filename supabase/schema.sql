@@ -16,6 +16,7 @@ create table if not exists kids (
 alter table kids add column if not exists funding_tier text not null default 'standard';
 alter table kids add column if not exists program_start_year integer;  -- first program year (for the July 1 first-year floor, 35-111(a)(2)(F)(ii)(b))
 alter table kids add column if not exists prior_tech text;  -- parent-listed prior EFA technology (device + year), used by the technology justification path. Device descriptions only, never health data.
+alter table kids add column if not exists sort_order integer;  -- manual display order set by the parent on the Manage Students page. Null sorts last (falls back to created_at).
 
 -- Claim outcome capture (parent-reported), so we can learn from real denials.
 alter table claims add column if not exists outcome text;         -- approved | denied

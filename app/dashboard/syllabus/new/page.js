@@ -7,7 +7,9 @@ export default async function NewSyllabus() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("*").order("created_at");
+  const { data: kids } = await supabase.from("kids").select("*")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
 
   return (
     <>

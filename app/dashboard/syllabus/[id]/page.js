@@ -7,7 +7,9 @@ export default async function EditSyllabus({ params }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: kids } = await supabase.from("kids").select("*").order("created_at");
+  const { data: kids } = await supabase.from("kids").select("*")
+    .order("sort_order", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
   const { data: existing } = await supabase.from("syllabi").select("*").eq("id", params.id).single();
   if (!existing) notFound();
 
