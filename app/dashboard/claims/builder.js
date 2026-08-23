@@ -32,6 +32,11 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
   const kid = kids.find(k => k.id === kidId);
   const fields = PATHWAY_FIELDS[pathway] || {};
 
+  // Reported-practice flag (not a 6 CAR Part 35 rule): families say services,
+  // tutoring, and Direct Pay tend to want the student's name on the invoice,
+  // while parent-name receipts are generally fine for physical supplies.
+  const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson/i.test(category || "");
+
   const claim = { vendor, pathway, amount, date, category, items, purpose, reasoning,
     receipt_count: receipts.length, payment_count: payments.length };
 
@@ -181,6 +186,23 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
         </div>
         <div><label>Items (comma-separated)</label><input value={items} onChange={e => setItems(e.target.value)} placeholder="e.g. Latin primer, dry-erase markers" /></div>
       </div>
+
+      {needsStudentName && (
+        <div style={{ marginTop: 12, border: "1px solid #e7d3a6", borderRadius: 12, padding: "11px 14px", background: "#fdf7e8" }}>
+          <div className="sans" style={{ display: "grid", gridTemplateColumns: "18px 1fr", gap: 8, fontSize: 13, alignItems: "start" }}>
+            <span style={{ color: "var(--gold)", fontWeight: 700 }}>!</span>
+            <div style={{ color: "#4a4636", lineHeight: 1.5 }}>
+              <b>Put the student's name on this one.</b> For {pathway === "directpay" ? "Direct Pay" : "services and tutoring"}, families
+              report the invoice or receipt should show the student's name — enter it in the vendor's <b>"company"</b> field at checkout,
+              or ask the provider to add it to the invoice. For physical supplies you buy yourself, a receipt with your name and the
+              student's address is generally accepted.
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+                This reflects what families report, not a rule in 6 CAR Part 35. The Department makes the final call.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pathway === "reimbursement" && (
         <div className="row" style={{ marginTop: 12 }}>

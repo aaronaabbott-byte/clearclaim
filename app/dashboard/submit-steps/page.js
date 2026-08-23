@@ -18,6 +18,7 @@ const STEPS = [
 const TIPS = [
   "The receipt must show a real date, not 'Today', plus the store name and the payment method.",
   "Always include a proof-of-payment screenshot, and it is essentially required for PayPal orders.",
+  "For services, tutoring, and Direct Pay, families report the student's name should be on the invoice — put it in the vendor's \"company\" field or ask the provider to add it. For physical supplies you buy yourself, a receipt with your name and the student's address is generally accepted. This is reported practice, not a written rule, and the Department decides.",
   "If you need to cancel a request, use the cancel option on that request. Be careful not to cancel a tuition payment request, which lives in the same list.",
 ];
 
