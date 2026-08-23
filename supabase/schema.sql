@@ -143,6 +143,32 @@ create table if not exists classes (
   created_at timestamptz default now()
 );
 
+-- Provider saved menu: products/services a vendor can drop into an invoice
+-- without retyping. Just a name and a default price.
+create table if not exists provider_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  unit_price numeric(10,2) default 0,
+  created_at timestamptz default now()
+);
+
+-- Provider invoices, saved so the vendor keeps a record and can reprint.
+create table if not exists invoices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  invoice_no text,
+  student_name text,
+  parent_name text,
+  invoice_date date,
+  items jsonb default '[]'::jsonb,      -- [{ desc, qty, unit_price }]
+  notes text,
+  shipping numeric(10,2) default 0,
+  tax numeric(10,2) default 0,
+  total numeric(10,2) default 0,
+  created_at timestamptz default now()
+);
+
 -- Receipt vault: a sorted "shoebox" of receipts, filed by student (or shared),
 -- with a status so parents can see what's been claimed. Files live in the
 -- 'documents' bucket under ${user_id}/receipts/.
@@ -181,6 +207,8 @@ create table if not exists compliance (
 alter table profiles    enable row level security;
 alter table compliance  enable row level security;
 alter table classes     enable row level security;
+alter table provider_items enable row level security;
+alter table invoices    enable row level security;
 alter table receipts    enable row level security;
 alter table kids        enable row level security;
 alter table vendors     enable row level security;
@@ -193,6 +221,8 @@ alter table preapprovals enable row level security;
 create policy "own profile" on profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own compliance" on compliance for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own classes" on classes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own provider_items" on provider_items for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own invoices" on invoices for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own receipts" on receipts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own kids"    on kids    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own vendors" on vendors for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

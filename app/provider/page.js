@@ -16,6 +16,8 @@ export default async function ProviderHome() {
     .eq("branded", true).order("created_at", { ascending: false });
   const { data: classes } = await supabase.from("classes").select("id,name,service,term,students")
     .order("created_at", { ascending: false });
+  const { data: invoices } = await supabase.from("invoices").select("id,invoice_no,student_name,total,invoice_date")
+    .order("created_at", { ascending: false });
 
   let logoUrl = null;
   if (profile.logo_path) {
@@ -75,6 +77,36 @@ export default async function ProviderHome() {
                     </Link>
                   );
                 })}
+              </div>
+            )}
+        </div>
+
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>Invoices</h2>
+            <span className="spacer" style={{ flex: 1 }} />
+            <Link href="/provider/items"><button>Products & services</button></Link>
+            <Link href="/provider/invoice/new"><button className="primary">+ New invoice</button></Link>
+          </div>
+          <p className="muted sans" style={{ fontSize: 13, marginTop: 8 }}>
+            Make a clean invoice on your own letterhead in seconds. Save the things you charge for once, then tap to add them.
+            For direct pay, a payment request is usually easier — invoices are for when you can't link the vendor.
+          </p>
+          {(!invoices || invoices.length === 0)
+            ? <p className="muted sans" style={{ fontSize: 14, marginTop: 8 }}>No invoices yet. Create your first above.</p>
+            : (
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                {invoices.map(v => (
+                  <Link key={v.id} href={`/provider/invoice/${v.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+                    <div className="kid" style={{ alignItems: "center" }}>
+                      <div style={{ flex: 1 }}>
+                        <b>{v.invoice_no ? `#${v.invoice_no}` : "Invoice"}{v.student_name ? ` · ${v.student_name}` : ""}</b>
+                        <div className="muted sans" style={{ fontSize: 13 }}>{v.invoice_date || ""}</div>
+                      </div>
+                      <span className="sans" style={{ fontSize: 14, fontWeight: 700, color: "var(--navy2)" }}>${Number(v.total || 0).toFixed(2)}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
         </div>
