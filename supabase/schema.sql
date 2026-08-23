@@ -149,7 +149,8 @@ create table if not exists classes (
 create table if not exists receipts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  kid_id uuid references kids(id) on delete set null,   -- null with shared=true means multiple students
+  kid_id uuid references kids(id) on delete set null,   -- single student (kept for grouping/claim prefill)
+  kid_ids jsonb default '[]'::jsonb,                     -- one or more students this receipt covers
   shared boolean default false,
   vendor text,
   category text,
@@ -161,6 +162,8 @@ create table if not exists receipts (
   filename text,
   created_at timestamptz default now()
 );
+-- If the receipts table already exists, add the multi-student column:
+alter table receipts add column if not exists kid_ids jsonb default '[]'::jsonb;
 
 -- Homeschool compliance tracker: which yearly items a family has completed.
 -- One row per (user, item, school year). Presence with done=true = completed.

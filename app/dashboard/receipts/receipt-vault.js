@@ -20,7 +20,8 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
   const [receipts, setReceipts] = useState(initialReceipts || []);
 
   const [file, setFile] = useState(null);
-  const [who, setWho] = useState(kids[0]?.id || "shared");
+  const [sel, setSel] = useState(kids[0] ? [kids[0].id] : []);
+  const toggleSel = (id) => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const [vendor, setVendor] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -33,14 +34,14 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
   async function add() {
     setErr(""); setMsg("");
     if (!file) { setErr("Choose a receipt file first."); return; }
+    if (sel.length === 0) { setErr("Pick at least one student."); return; }
     setBusy(true);
     try {
       const path = `${userId}/receipts/${Date.now()}-${file.name}`.replace(/\s+/g, "_");
       const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { upsert: false });
       if (upErr) { setErr("Upload failed: " + upErr.message); setBusy(false); return; }
-      const shared = who === "shared";
       const row = {
-        user_id: userId, kid_id: shared ? null : who, shared,
+        user_id: userId, kid_id: sel.length === 1 ? sel[0] : null, kid_ids: sel, shared: sel.length > 1,
         vendor: vendor || null, category: category || null,
         receipt_date: date || null, amount: amount ? Number(amount) : null,
         note: note || null, path, filename: file.name, status: "unfiled",
@@ -81,10 +82,13 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
     router.push(`/dashboard/claims/new?${p.toString()}`);
   }
 
-  // Group: one section per student, then a Shared / multiple section.
+  // A receipt is tagged to a student via kid_ids (new) or kid_id (single/legacy),
+  // so a shared receipt shows under each student it covers.
+  const tagged = (r, id) => (Array.isArray(r.kid_ids) && r.kid_ids.includes(id)) || r.kid_id === id;
+  const sharedNames = (r) => kids.filter(k => tagged(r, k.id)).map(k => k.first_name).join(", ");
   const groups = [
-    ...kids.map(k => ({ id: k.id, label: `${k.first_name}${k.grade ? ` · grade ${k.grade}` : ""}`, rows: receipts.filter(r => r.kid_id === k.id) })),
-    { id: "shared", label: "Shared / multiple students", rows: receipts.filter(r => !r.kid_id) },
+    ...kids.map(k => ({ id: k.id, label: `${k.first_name}${k.grade ? ` · grade ${k.grade}` : ""}`, rows: receipts.filter(r => tagged(r, k.id)) })),
+    { id: "shared", label: "No student set", rows: receipts.filter(r => !r.kid_id && (!Array.isArray(r.kid_ids) || r.kid_ids.length === 0)) },
   ].filter(g => g.rows.length > 0);
 
   return (
@@ -98,11 +102,21 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
           <div><label>Receipt file (photo, screenshot, or PDF)</label>
             <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} />
           </div>
-          <div><label>Student</label>
-            <select value={who} onChange={e => setWho(e.target.value)}>
-              {kids.map(k => <option key={k.id} value={k.id}>{k.first_name}{k.grade ? ` (grade ${k.grade})` : ""}</option>)}
-              <option value="shared">Shared / multiple students</option>
-            </select>
+          <div><label>Student(s) — pick one, or several for a shared receipt</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {kids.map(k => {
+                const on = sel.includes(k.id);
+                return (
+                  <button type="button" key={k.id} onClick={() => toggleSel(k.id)} className="sans"
+                    style={{ fontSize: 13, padding: "8px 13px", fontWeight: 600,
+                      background: on ? "var(--navy2)" : "#fff", color: on ? "#fff" : "var(--ink)",
+                      borderColor: on ? "var(--navy2)" : "var(--line)" }}>
+                    {on ? "✓ " : ""}{k.first_name}
+                  </button>
+                );
+              })}
+            </div>
+            {sel.length > 1 && <div className="muted sans" style={{ fontSize: 12, marginTop: 5 }}>Shared across {sel.length} students — it'll show under each.</div>}
           </div>
         </div>
         <div className="row" style={{ marginTop: 8 }}>
@@ -137,6 +151,7 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
                       <b className="sans" style={{ fontSize: 14 }}>{r.vendor || r.filename || "Receipt"}</b>
                       {r.amount ? <span className="sans" style={{ fontSize: 14 }}> · {money(r.amount)}</span> : null}
                       <div className="muted sans" style={{ fontSize: 12.5 }}>
+                        {(Array.isArray(r.kid_ids) && r.kid_ids.length > 1) ? <span style={{ color: "var(--gold)", fontWeight: 700 }}>Shared: {sharedNames(r)} · </span> : null}
                         {[r.receipt_date, r.category, r.note].filter(Boolean).join(" · ") || r.filename}
                       </div>
                     </div>
