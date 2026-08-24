@@ -78,6 +78,19 @@ function Lane({ k, children }) {
   );
 }
 
+function PlanList({ items }) {
+  return (
+    <ul style={{ listStyle: "none", padding: 0, margin: "0 0 16px", display: "grid", gap: 8 }}>
+      {items.map((t, i) => (
+        <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14.5, lineHeight: 1.45 }}>
+          <span style={{ color: "var(--lp-gold)", fontWeight: 700, flex: "none" }}>✓</span>
+          <span>{t}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function Landing() {
   return (
     <div className="lp">
@@ -86,6 +99,7 @@ export default function Landing() {
         <div className="lp-wrap lp-nav-in">
           <img className="lp-logo" src="/wordmark.png" alt="ClearClaim" />
           <span className="lp-sp" />
+          <a className="lp-btn lp-btn-clear lp-btn-sm hide-sm" href="#pricing">Pricing</a>
           <a className="lp-btn lp-btn-clear lp-btn-sm" href={`${APP}/login`}>Log in</a>
           <a className="lp-btn lp-btn-gold lp-btn-sm" href={`${APP}/login`}>Get started</a>
         </div>
@@ -108,7 +122,7 @@ export default function Landing() {
             </div>
             <p className="lp-trust">
               <IconLock />
-              <span>Free during our research preview. Works alongside ClassWallet — we never touch your money.</span>
+              <span>Start free — upgrade for AI and unlimited students. Works alongside ClassWallet — we never touch your money.</span>
             </p>
           </div>
 
@@ -276,16 +290,51 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ---------- pricing ---------- */}
+      <section className="lp-section" id="pricing">
+        <div className="lp-wrap">
+          <div className="lp-section-head">
+            <p className="lp-kicker">Pricing</p>
+            <h2 className="lp-h2">Start free. Upgrade when you need more.</h2>
+            <p className="lp-lead">
+              The free plan covers one student, a starter receipt vault, and the core tools. Upgrade for AI,
+              unlimited students, and the full toolkit — cancel any time.
+            </p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(258px,1fr))", gap: 18, maxWidth: 760, margin: "0 auto" }}>
+            <div className="lp-card" style={{ borderColor: "var(--lp-gold)" }}>
+              <h3 className="lp-h3">Family</h3>
+              <div style={{ margin: "2px 0 12px" }}>
+                <span style={{ fontFamily: "var(--serif)", fontSize: 30, fontWeight: 700, color: "var(--lp-navy)" }}>$10</span>
+                <span style={{ color: "var(--lp-navy-2)", fontSize: 14 }}> / month · or $99 / year</span>
+              </div>
+              <PlanList items={["Ask Ann + AI-drafted use notes", "Smart eligibility with reasoning", "Unlimited students", "Full receipt vault + claim packets", "Pre-approval tool + syllabus builder", "Document redaction & annotation"]} />
+              <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Start free</a>
+            </div>
+            <div className="lp-card">
+              <h3 className="lp-h3">Provider</h3>
+              <div style={{ margin: "2px 0 12px" }}>
+                <span style={{ fontFamily: "var(--serif)", fontSize: 30, fontWeight: 700, color: "var(--lp-navy)" }}>$19</span>
+                <span style={{ color: "var(--lp-navy-2)", fontSize: 14 }}> / month · or $189 / year</span>
+              </div>
+              <PlanList items={["Branded course documents on your letterhead", "Class roster with family contacts", "Invoice builder with auto-calculated tax", "Saved products & services menu"]} />
+              <a className="lp-btn lp-btn-quiet lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Start free</a>
+            </div>
+          </div>
+          <p className="lp-lead" style={{ fontSize: 14, marginTop: 16, textAlign: "center" }}>Every account starts on the free plan — no card required to begin.</p>
+        </div>
+      </section>
+
       {/* ---------- final CTA ---------- */}
       <section className="lp-final">
         <div className="lp-wrap">
           <h2 className="lp-h2">Get your claims ready to approve.</h2>
-          <p className="lp-lead">Free during our research preview. Set up takes a few minutes.</p>
+          <p className="lp-lead">Start free in a few minutes — upgrade any time.</p>
           <div className="lp-ctas">
             <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`}>Create your free account</a>
             <a className="lp-btn lp-btn-light lp-btn-lg" href={`${APP}/login`}>Log in</a>
           </div>
-          <p className="lp-final-note">Built with Arkansas EFA families during our research preview.</p>
+          <p className="lp-final-note">Built with Arkansas EFA families, for Arkansas EFA families.</p>
         </div>
       </section>
 
@@ -296,6 +345,7 @@ export default function Landing() {
             <img className="lp-logo" src="/wordmark.png" alt="ClearClaim" />
             <div className="lp-foot-links">
               <Link href="/terms">Terms &amp; full disclaimer</Link>
+              <Link href="/privacy">Privacy</Link>
               <a href={`${APP}/login`}>Log in</a>
             </div>
           </div>

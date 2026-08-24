@@ -41,8 +41,8 @@ export default function Login() {
         if (data.session) {
           // Email confirmation is off — signed in right away. Record roles.
           await supabase.from("profiles").upsert({ user_id: data.user.id, is_parent: isParent, is_provider: isProvider });
-          const dest = (isProvider && !isParent) ? "/provider/setup" : isProvider ? "/provider/setup" : "/dashboard";
-          router.push(dest); router.refresh(); return;
+          const dest = isProvider ? "/provider/setup" : "/dashboard";
+          router.push(`/welcome?next=${encodeURIComponent(dest)}`); router.refresh(); return;
         }
         // Email confirmation is on — user must verify before signing in.
         setNote("Account created. Check your email to confirm it, then sign in. You can finish your provider setup after you sign in.");

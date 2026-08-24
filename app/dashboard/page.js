@@ -10,10 +10,12 @@ import CocurricularGuide from "./cocurricular";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
 import PreapprovalStatus from "./preapproval-status";
+import UpgradeBanner from "./upgrade-banner";
 
 export default async function Dashboard() {
   const supabase = createClient();
-  const { user, profile } = await getProfile();
+  const { user, profile, plan } = await getProfile();
+  const isFree = !plan?.family && !plan?.provider;
   if (!user) redirect("/login");
   // Provider-only accounts land in the provider view.
   if (profile?.is_provider && !profile?.is_parent) redirect("/provider");
@@ -78,6 +80,7 @@ export default async function Dashboard() {
     <>
       <Bar email={user.email} admin={isAdmin(user.email)} providerView={isProvider} />
       <main>
+        {isFree && <UpgradeBanner />}
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h2 style={{ margin: 0 }}>Students</h2>

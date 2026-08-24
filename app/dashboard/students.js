@@ -89,6 +89,7 @@ export function Bar({ email, settings = true, admin = false, providerView = fals
   if (providerView) items.push({ label: "Provider view", href: "/provider" });
   if (parentView) items.push({ label: "Parent view", href: "/dashboard" });
   if (settings) items.push({ label: "Settings", href: "/dashboard/settings" });
+  items.push({ label: "Plans & billing", href: "/upgrade" });
   if (admin) items.push({ label: "Admin", href: "/admin" });
   return (
     <header>

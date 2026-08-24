@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import RedeemCode from "./redeem";
 import { CheckoutButtons, ManageBilling } from "./plan-actions";
+import { FREE_FEATURES, FAMILY_FEATURES, PROVIDER_FEATURES } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
-const FAMILY = ["Ask Ann, any time", "AI-drafted educational-use notes", "Smart eligibility with reasoning",
-  "The full pre-approval tool + log", "Unlimited students", "Full receipt vault", "Syllabus builder", "Document redaction & annotation"];
-const PROVIDER = ["Branded course documents on your letterhead", "Class roster with family contacts", "Invoice generator + saved products menu"];
+const FAMILY = FAMILY_FEATURES;
+const PROVIDER = PROVIDER_FEATURES;
 
 function PlanCard({ title, price, per, features, active, accent, children }) {
   return (
@@ -50,6 +50,11 @@ export default async function Upgrade() {
         </div>
 
         <div className="row" style={{ marginTop: 4 }}>
+          <PlanCard title="Free" price="$0" per="always free" features={FREE_FEATURES} active={!plan.family && !plan.provider}>
+            {!plan.family && !plan.provider
+              ? <p className="sans muted" style={{ fontSize: 13, marginTop: 14 }}>You're on the free plan.</p>
+              : <p className="sans muted" style={{ fontSize: 13, marginTop: 14 }}>Included with every account.</p>}
+          </PlanCard>
           <PlanCard title="Family" price="$10" per="/mo — or $99/yr (2 months free)" features={FAMILY} active={plan.family} accent>
             {plan.family ? <ManageBilling /> : <CheckoutButtons tier="family" monthly="$10" yearly="$99" />}
           </PlanCard>
