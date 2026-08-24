@@ -37,7 +37,10 @@ export default async function Settings() {
           </p>
         </div>
 
-        {isProvider && (
+        {/* Business profile only for provider-only accounts. Dual-role (parent +
+            provider) users edit it in the Provider view, so it doesn't clutter
+            the parent's student settings page. */}
+        {isProvider && !isParent && (
           <div className="card">
             <h2>Business profile</h2>
             <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
@@ -62,7 +65,9 @@ export default async function Settings() {
 
             <div className="card">
               <h2>Add a student</h2>
-              <KidForm first={!hasKids} />
+              {/* key on the student count remounts the form after each add, so the
+                  fields clear instead of carrying the last student's values over. */}
+              <KidForm key={kids?.length ?? 0} first={!hasKids} />
             </div>
           </>
         )}
