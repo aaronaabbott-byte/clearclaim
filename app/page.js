@@ -301,24 +301,35 @@ export default function Landing() {
               unlimited students, and the full toolkit — cancel any time.
             </p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(258px,1fr))", gap: 18, maxWidth: 760, margin: "0 auto" }}>
-            <div className="lp-card" style={{ borderColor: "var(--lp-gold)" }}>
-              <h3 className="lp-h3">Family</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 18, maxWidth: 1040, margin: "0 auto" }}>
+            <div className="lp-card">
+              <h3 className="lp-h3">Free</h3>
               <div style={{ margin: "2px 0 12px" }}>
+                <span style={{ fontFamily: "var(--serif)", fontSize: 30, fontWeight: 700, color: "var(--lp-navy)" }}>$0</span>
+                <span style={{ color: "var(--lp-navy-2)", fontSize: 14 }}> · always free</span>
+              </div>
+              <PlanList items={["1 student", "Receipt vault — up to 10 receipts", "Eligibility check", "Claim builder + ClassWallet packets", "Document library"]} />
+              <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Start free</a>
+            </div>
+            <div className="lp-card" style={{ borderColor: "var(--lp-gold)", borderWidth: 2 }}>
+              <h3 className="lp-h3">Family</h3>
+              <div style={{ margin: "2px 0 6px" }}>
                 <span style={{ fontFamily: "var(--serif)", fontSize: 30, fontWeight: 700, color: "var(--lp-navy)" }}>$10</span>
                 <span style={{ color: "var(--lp-navy-2)", fontSize: 14 }}> / month · or $99 / year</span>
               </div>
-              <PlanList items={["Ask Ann + AI-drafted use notes", "Smart eligibility with reasoning", "Unlimited students", "Full receipt vault + claim packets", "Pre-approval tool + syllabus builder", "Document redaction & annotation"]} />
-              <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Start free</a>
+              <p style={{ fontSize: 13, color: "var(--lp-navy-2)", margin: "0 0 8px", fontWeight: 600 }}>Everything in Free, plus:</p>
+              <PlanList items={["Ask Ann + AI-drafted use notes", "Smart eligibility with reasoning", "Unlimited students & receipts", "Pre-approval tool + syllabus builder", "Document redaction & annotation"]} />
+              <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Get started</a>
             </div>
             <div className="lp-card">
               <h3 className="lp-h3">Provider</h3>
-              <div style={{ margin: "2px 0 12px" }}>
+              <div style={{ margin: "2px 0 6px" }}>
                 <span style={{ fontFamily: "var(--serif)", fontSize: 30, fontWeight: 700, color: "var(--lp-navy)" }}>$19</span>
                 <span style={{ color: "var(--lp-navy-2)", fontSize: 14 }}> / month · or $189 / year</span>
               </div>
+              <p style={{ fontSize: 13, color: "var(--lp-navy-2)", margin: "0 0 8px", fontWeight: 600 }}>For tutors, classes &amp; microschools:</p>
               <PlanList items={["Branded course documents on your letterhead", "Class roster with family contacts", "Invoice builder with auto-calculated tax", "Saved products & services menu"]} />
-              <a className="lp-btn lp-btn-quiet lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Start free</a>
+              <a className="lp-btn lp-btn-quiet lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Get started</a>
             </div>
           </div>
           <p className="lp-lead" style={{ fontSize: 14, marginTop: 16, textAlign: "center" }}>Every account starts on the free plan — no card required to begin.</p>
