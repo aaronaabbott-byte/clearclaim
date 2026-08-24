@@ -127,6 +127,71 @@ create table if not exists profiles (
 -- separate from a parent's course syllabi.
 alter table syllabi add column if not exists branded boolean default false;
 
+-- Paid entitlements: which tiers an account has and until when. Deliberately
+-- NOT writable by the user (no insert/update/delete policy) so nobody can grant
+-- themselves premium via the API. Only the redeem_code function (security
+-- definer), the admin (service role), or a future Stripe webhook change it.
+create table if not exists entitlements (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  family_until date,
+  provider_until date,
+  updated_at timestamptz default now()
+);
+
+-- Access / comp codes you hand out for free access. Only the service role
+-- (admin) and the redeem function ever read these; users never see the list.
+create table if not exists access_codes (
+  code text primary key,
+  grants text not null default 'family',    -- family | provider | both
+  months int not null default 12,
+  max_uses int,                              -- null = unlimited
+  uses int not null default 0,
+  expires_at date,
+  note text,
+  active boolean not null default true,
+  created_at timestamptz default now()
+);
+create table if not exists code_redemptions (
+  id uuid primary key default gen_random_uuid(),
+  code text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz default now(),
+  unique (code, user_id)
+);
+
+-- Redeem a code as the signed-in user. Security definer so it can read the code
+-- table and write entitlements that the user's own role cannot touch.
+create or replace function redeem_code(p_code text)
+returns text language plpgsql security definer set search_path = public as $$
+declare c access_codes; uid uuid := auth.uid(); addf boolean; addp boolean;
+begin
+  if uid is null then return 'You must be signed in.'; end if;
+  select * into c from access_codes where lower(code) = lower(p_code) and active = true;
+  if c.code is null then return 'That code is not valid.'; end if;
+  if c.expires_at is not null and c.expires_at < current_date then return 'That code has expired.'; end if;
+  if c.max_uses is not null and c.uses >= c.max_uses then return 'That code has been fully used.'; end if;
+  if exists (select 1 from code_redemptions where code = c.code and user_id = uid) then return 'You already redeemed this code.'; end if;
+
+  addf := c.grants in ('family','both');
+  addp := c.grants in ('provider','both');
+
+  insert into entitlements (user_id, family_until, provider_until) values (
+    uid,
+    case when addf then (current_date + (c.months || ' months')::interval)::date else null end,
+    case when addp then (current_date + (c.months || ' months')::interval)::date else null end
+  )
+  on conflict (user_id) do update set
+    family_until = case when addf then (greatest(coalesce(entitlements.family_until, current_date), current_date) + (c.months || ' months')::interval)::date else entitlements.family_until end,
+    provider_until = case when addp then (greatest(coalesce(entitlements.provider_until, current_date), current_date) + (c.months || ' months')::interval)::date else entitlements.provider_until end,
+    updated_at = now();
+
+  update access_codes set uses = uses + 1 where code = c.code;
+  insert into code_redemptions (code, user_id) values (c.code, uid);
+  return 'Success — your access is unlocked.';
+end; $$;
+revoke execute on function redeem_code(text) from public, anon;
+grant execute on function redeem_code(text) to authenticated;
+
 -- Extra provider fields: the free-text list of services they offer.
 alter table profiles add column if not exists services text;
 
@@ -205,6 +270,9 @@ create table if not exists compliance (
 );
 
 alter table profiles    enable row level security;
+alter table entitlements enable row level security;
+alter table access_codes enable row level security;
+alter table code_redemptions enable row level security;
 alter table compliance  enable row level security;
 alter table classes     enable row level security;
 alter table provider_items enable row level security;
@@ -219,6 +287,10 @@ alter table preapprovals enable row level security;
 
 -- owner-only access
 create policy "own profile" on profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- Entitlements: users may READ their own, but not write (no write policy on purpose).
+create policy "read own entitlements" on entitlements for select using (auth.uid() = user_id);
+-- access_codes: no policy at all => only the service role can read/write; users can't enumerate codes.
+create policy "read own redemptions" on code_redemptions for select using (auth.uid() = user_id);
 create policy "own compliance" on compliance for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own classes" on classes for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own provider_items" on provider_items for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

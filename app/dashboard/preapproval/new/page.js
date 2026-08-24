@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { planFrom } from "@/lib/plan";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { categoryCap, efaBudgetYear, inBudgetYear } from "@/lib/rules";
@@ -8,6 +9,7 @@ export default async function NewPreapproval({ searchParams }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  { const { data: __ent } = await createClient().from("entitlements").select("*").eq("user_id", user.id).single(); if (!planFrom(__ent).family) redirect("/upgrade"); }
   const { data: rawKids } = await supabase.from("kids").select("id,first_name,grade,prior_tech")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });

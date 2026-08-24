@@ -7,9 +7,10 @@ import ItemsEditor from "@/app/provider/items-editor";
 export const dynamic = "force-dynamic";
 
 export default async function ProviderItems() {
-  const { user, profile } = await getProfile();
+  const { user, profile, plan } = await getProfile();
   if (!user) redirect("/login");
   if (!profile?.is_provider) redirect("/dashboard");
+  if (!plan.provider) redirect("/upgrade");
   const supabase = createClient();
   const { data: items } = await supabase.from("provider_items").select("*").order("created_at");
 

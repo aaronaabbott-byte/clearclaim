@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
 import AdminRow from "./admin-rows";
+import AdminCodes from "./admin-codes";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,8 @@ export default async function Admin() {
   // Pull all accounts, then per-user counts (service role bypasses RLS).
   const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const [{ data: kids }, { data: claims }, { data: preapprovals }, { data: profiles },
-    { data: classes }, { data: invoices }, { data: syllabi }, { data: pItems }] = await Promise.all([
+    { data: classes }, { data: invoices }, { data: syllabi }, { data: pItems },
+    { data: ents }, { data: codes }] = await Promise.all([
     admin.from("kids").select("user_id"),
     admin.from("claims").select("user_id"),
     admin.from("preapprovals").select("user_id"),
@@ -55,7 +57,11 @@ export default async function Admin() {
     admin.from("invoices").select("user_id,total"),
     admin.from("syllabi").select("user_id,branded"),
     admin.from("provider_items").select("user_id"),
+    admin.from("entitlements").select("*"),
+    admin.from("access_codes").select("*").order("created_at", { ascending: false }),
   ]);
+  const entMap = {};
+  for (const e of ents || []) entMap[e.user_id] = e;
   const tally = (rows) => {
     const m = {};
     for (const r of rows || []) m[r.user_id] = (m[r.user_id] || 0) + 1;
@@ -86,6 +92,8 @@ export default async function Admin() {
       p_invoice_total: invSum[u.id] || 0,
       p_docs: docMap[u.id] || 0,
       p_items: itemMap[u.id] || 0,
+      family_until: entMap[u.id]?.family_until || null,
+      provider_until: entMap[u.id]?.provider_until || null,
     }))
     .sort((a, b) => (b.last_sign_in_at || b.created_at || "").localeCompare(a.last_sign_in_at || a.created_at || ""));
 
@@ -107,6 +115,14 @@ export default async function Admin() {
             ? <p className="muted sans" style={{ fontSize: 14 }}>No accounts yet.</p>
             : users.map(u => <AdminRow key={u.id} u={u} />)}
         </div>
+      </div>
+
+      <div className="card">
+        <h2>Access codes</h2>
+        <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
+          Create a code to give free access. Share it, and users redeem it on the Upgrade page — no card needed.
+        </p>
+        <AdminCodes codes={codes || []} />
       </div>
     </Shell>
   );

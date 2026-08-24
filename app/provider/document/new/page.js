@@ -6,9 +6,10 @@ import SyllabusBuilder from "@/app/dashboard/syllabus/builder";
 export const dynamic = "force-dynamic";
 
 export default async function NewProviderDoc() {
-  const { user, profile } = await getProfile();
+  const { user, profile, plan } = await getProfile();
   if (!user) redirect("/login");
   if (!profile?.is_provider) redirect("/dashboard");
+  if (!plan.provider) redirect("/upgrade");
 
   return (
     <>

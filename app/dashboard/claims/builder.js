@@ -9,7 +9,7 @@ import { buildPacketPdfs } from "@/lib/packet";
 const DOT = { ok: "var(--teal)", warn: "var(--gold)", fail: "var(--red)" };
 const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
-export default function ClaimBuilder({ kids, userId, claims = [], initialItems = "", initialNote = "", prefill = {} }) {
+export default function ClaimBuilder({ kids, userId, claims = [], initialItems = "", initialNote = "", prefill = {}, premium = false }) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -225,10 +225,12 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
           placeholder="How this student uses these items in their classes." />
         <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
           <button type="button" className="sans" onClick={() => setReasoning(suggested)}>Use suggested wording</button>
-          <button type="button" className="sans" onClick={improveWithAI} disabled={aiBusy}
-            style={{ borderColor: "var(--navy2)", color: "var(--navy2)" }}>
-            {aiBusy ? "Thinking…" : "✨ Improve with AI"}
-          </button>
+          {premium
+            ? <button type="button" className="sans" onClick={improveWithAI} disabled={aiBusy}
+                style={{ borderColor: "var(--navy2)", color: "var(--navy2)" }}>
+                {aiBusy ? "Thinking…" : "✨ Improve with AI"}
+              </button>
+            : <a href="/upgrade" className="sans" style={{ display: "inline-block", fontSize: 15, padding: "10px 16px", borderRadius: 11, border: "1px solid var(--line)", color: "var(--muted)", fontWeight: 600 }}>🔒 Improve with AI (Family plan)</a>}
           <span className="muted sans" style={{ fontSize: 12.5, flex: 1, minWidth: 180 }}>
             Suggestion: “{suggested.slice(0, 80)}{suggested.length > 80 ? "…" : ""}”
           </span>

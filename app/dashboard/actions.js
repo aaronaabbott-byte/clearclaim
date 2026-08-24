@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { planFrom, FREE_STUDENTS } from "@/lib/plan";
 
 export async function addKid(formData) {
   const supabase = createClient();
@@ -9,6 +10,12 @@ export async function addKid(formData) {
   const setting = formData.get("setting");
   const name = (formData.get("first_name") || "").trim();
   if (!name) return;
+  // Free plan is limited to one student; adding more needs the Family plan.
+  const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
+  if (!planFrom(ent).family) {
+    const { count } = await supabase.from("kids").select("id", { count: "exact", head: true });
+    if ((count || 0) >= FREE_STUDENTS) redirect("/upgrade");
+  }
   await supabase.from("kids").insert({
     user_id: user.id,
     first_name: name,

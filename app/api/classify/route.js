@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { config, fallbackClassify, validateVerdict, computeAction } from "@/lib/classify";
+import { planFrom } from "@/lib/plan";
 
 function systemPrompt() {
   const list = config.coreCategories.map(c => `  ${c.id}: ${c.text}`).join("\n");
@@ -32,11 +33,15 @@ export async function POST(request) {
   const purchaseDate = body.purchaseDate || null;
   const firstProgramYear = body.firstProgramYear || null;
 
+  const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
+  const family = planFrom(ent).family;
+
   let verdict;
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || !description.trim()) {
+  if (!key || !description.trim() || !family) {
     verdict = fallbackClassify(description);
-    if (!key) verdict.note = "Automated classifier is running in basic mode (no AI key). This is a keyword match, not a full reading.";
+    if (!family && key) verdict.note = "You're on the free plan, so this is a rules-based keyword check. Upgrade for the AI reading with reasoning.";
+    else if (!key) verdict.note = "Automated classifier is running in basic mode (no AI key). This is a keyword match, not a full reading.";
   } else {
     try {
       const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";

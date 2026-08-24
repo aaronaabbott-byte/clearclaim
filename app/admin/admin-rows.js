@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { resetAccount, deleteAccount, setUserRoles } from "./actions";
+import { resetAccount, deleteAccount, setUserRoles, grantPlan, revokePlan } from "./actions";
 
 export default function AdminRow({ u }) {
   const router = useRouter();
@@ -11,6 +11,26 @@ export default function AdminRow({ u }) {
   const [note, setNote] = useState(null);
   const [isParent, setIsParent] = useState(u.is_parent);
   const [isProvider, setIsProvider] = useState(u.is_provider);
+  const [planTier, setPlanTier] = useState("family");
+  const [planMonths, setPlanMonths] = useState("12");
+
+  const active = (d) => d && String(d) >= new Date().toISOString().slice(0, 10);
+  const planLabel = [active(u.family_until) && `Family→${u.family_until}`, active(u.provider_until) && `Provider→${u.provider_until}`].filter(Boolean).join(" · ") || "Free";
+
+  async function saveGrant() {
+    setBusy(true); setNote(null);
+    const res = await grantPlan(u.id, planTier, planMonths);
+    setBusy(false);
+    if (res.ok) { setNote({ ok: true, text: res.message }); setMode(null); router.refresh(); }
+    else setNote({ ok: false, text: res.error });
+  }
+  async function doRevoke() {
+    setBusy(true); setNote(null);
+    const res = await revokePlan(u.id);
+    setBusy(false);
+    if (res.ok) { setNote({ ok: true, text: res.message }); setMode(null); router.refresh(); }
+    else setNote({ ok: false, text: res.error });
+  }
 
   async function saveRoles() {
     setBusy(true); setNote(null);
@@ -54,11 +74,13 @@ export default function AdminRow({ u }) {
             </div>
           )}
           <div className="muted sans" style={{ fontSize: 12, marginTop: 3 }}>
-            Last access: <b style={{ color: "var(--ink)" }}>{datetime(u.last_sign_in_at)}</b> · joined {date(u.created_at)}
+            <span style={{ color: planLabel === "Free" ? "var(--muted)" : "var(--teal)", fontWeight: 700 }}>Plan: {planLabel}</span>
+            {" · "}Last access: <b style={{ color: "var(--ink)" }}>{datetime(u.last_sign_in_at)}</b> · joined {date(u.created_at)}
           </div>
         </div>
         {mode === null && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => { setMode("plan"); setNote(null); }}>Plan</button>
             <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => { setMode("roles"); setIsParent(u.is_parent); setIsProvider(u.is_provider); setNote(null); }}>Roles</button>
             <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => { setMode("reset"); setConfirm(""); setNote(null); }}>Reset data</button>
             <button type="button" className="sans" style={{ fontSize: 13, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={() => { setMode("delete"); setConfirm(""); setNote(null); }}>Delete account</button>
@@ -84,7 +106,28 @@ export default function AdminRow({ u }) {
         </div>
       )}
 
-      {mode && (
+      {mode === "plan" && (
+        <div style={{ marginTop: 12, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "#f6f9fc" }}>
+          <div className="sans" style={{ fontSize: 13.5, marginBottom: 8 }}>Comp a paid plan for <b>{u.email}</b> (no card). Current: <b>{planLabel}</b></div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <select value={planTier} onChange={e => setPlanTier(e.target.value)} className="sans" style={{ fontSize: 13 }}>
+              <option value="family">Family</option>
+              <option value="provider">Provider</option>
+              <option value="both">Both</option>
+            </select>
+            <label className="sans" style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+              <input value={planMonths} onChange={e => setPlanMonths(e.target.value)} inputMode="numeric" style={{ width: 64 }} /> months
+            </label>
+            <button type="button" className="sans" disabled={busy}
+              style={{ fontSize: 13, background: "var(--navy2)", color: "#fff", borderColor: "transparent" }}
+              onClick={saveGrant}>{busy ? "Saving…" : "Grant / extend"}</button>
+            <button type="button" className="sans" disabled={busy} style={{ fontSize: 13, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={doRevoke}>Revoke all</button>
+            <button type="button" className="sans" style={{ fontSize: 13 }} disabled={busy} onClick={() => setMode(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {(mode === "reset" || mode === "delete") && (
         <div style={{ marginTop: 12, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: mode === "delete" ? "#fdf3f2" : "#f6f9fc" }}>
           <div className="sans" style={{ fontSize: 13.5, marginBottom: 8 }}>
             {mode === "delete"

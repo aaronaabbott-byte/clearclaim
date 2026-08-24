@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { localSyllabusDraft } from "@/lib/syllabus";
+import { planFrom } from "@/lib/plan";
 
 // Drafts a full course syllabus. Returns structured fields the builder fills in.
 // Uses Claude when ANTHROPIC_API_KEY is set (server-only); otherwise a template.
@@ -8,6 +9,8 @@ export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ draft: null, error: "unauthorized" }, { status: 401 });
+  const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
+  if (!planFrom(ent).family) return NextResponse.json({ draft: null, premium: true }, { status: 402 });
 
   const { input = {}, kid = {} } = await request.json().catch(() => ({}));
   const fallback = localSyllabusDraft(input);

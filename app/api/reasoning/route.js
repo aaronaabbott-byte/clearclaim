@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { draftReasoning } from "@/lib/rules";
+import { planFrom } from "@/lib/plan";
 
 // Generates an educational-use justification with Claude. The API key lives only
 // on the server (ANTHROPIC_API_KEY) and is never exposed to the browser. If no
@@ -9,6 +10,9 @@ export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ text: null, error: "unauthorized" }, { status: 401 });
+
+  const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
+  if (!planFrom(ent).family) return NextResponse.json({ text: null, premium: true });
 
   const { claim = {}, kid = {} } = await request.json().catch(() => ({}));
   const fallback = draftReasoning(claim, kid);

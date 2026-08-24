@@ -13,8 +13,26 @@ const STATUSES = [
 ];
 const STATUS_COLOR = { unfiled: "var(--muted)", claimed: "var(--gold)", submitted: "var(--navy2)", approved: "var(--teal)", denied: "var(--red)" };
 const money = (n) => (n || n === 0) ? `$${Number(n).toFixed(2)}` : "";
+const FREE_RECEIPTS = 10;
 
-export default function ReceiptVault({ userId, kids, initialReceipts }) {
+// Shrink big phone photos before upload — saves storage and download costs, and
+// keeps uploads fast. PDFs and already-small files pass through untouched.
+async function compressImage(file, maxDim = 1500, quality = 0.82) {
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    if (scale >= 1 && file.size < 800 * 1024) { URL.revokeObjectURL(img.src); return file; }
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise(res => c.toBlob(res, "image/jpeg", quality));
+    URL.revokeObjectURL(img.src);
+    return (blob && blob.size < file.size) ? blob : file;
+  } catch { return file; }
+}
+
+export default function ReceiptVault({ userId, kids, initialReceipts, premium = false }) {
   const router = useRouter();
   const supabase = createClient();
   const [receipts, setReceipts] = useState(initialReceipts || []);
@@ -30,15 +48,18 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [atCap, setAtCap] = useState(false);
 
   async function add() {
     setErr(""); setMsg("");
     if (!file) { setErr("Choose a receipt file first."); return; }
     if (sel.length === 0) { setErr("Pick at least one student."); return; }
+    if (!premium && receipts.length >= FREE_RECEIPTS) { setAtCap(true); return; }
     setBusy(true);
     try {
+      const toUpload = await compressImage(file);
       const path = `${userId}/receipts/${Date.now()}-${file.name}`.replace(/\s+/g, "_");
-      const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { upsert: false });
+      const { error: upErr } = await supabase.storage.from("documents").upload(path, toUpload, { upsert: false });
       if (upErr) { setErr("Upload failed: " + upErr.message); setBusy(false); return; }
       const row = {
         user_id: userId, kid_id: sel.length === 1 ? sel[0] : null, kid_ids: sel, shared: sel.length > 1,
@@ -98,6 +119,18 @@ export default function ReceiptVault({ userId, kids, initialReceipts }) {
         <p className="muted sans" style={{ fontSize: 14, marginTop: -4 }}>
           Drop receipts in as you go — even before you're ready to file a claim. Tag each to a student so everything stays sorted.
         </p>
+        {!premium && (
+          <p className="finenote" style={{ marginTop: 4 }}>
+            Free plan: {Math.min(receipts.length, FREE_RECEIPTS)} of {FREE_RECEIPTS} receipts used. <a href="/upgrade" style={{ color: "var(--navy2)", fontWeight: 700 }}>Upgrade</a> for an unlimited vault.
+          </p>
+        )}
+        {atCap && (
+          <div style={{ marginTop: 10, border: "1px solid #e7d3a6", borderRadius: 12, padding: "11px 14px", background: "#fdf7e8" }}>
+            <div className="sans" style={{ fontSize: 13.5, color: "#4a4636" }}>
+              <b>You've filled your free vault ({FREE_RECEIPTS} receipts).</b> Upgrade to the Family plan for unlimited receipts and AI. <a href="/upgrade" style={{ color: "var(--navy2)", fontWeight: 700 }}>See plans →</a>
+            </div>
+          </div>
+        )}
         <div className="row" style={{ marginTop: 10 }}>
           <div><label>Receipt file (photo, screenshot, or PDF)</label>
             <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} />

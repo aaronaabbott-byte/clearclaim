@@ -11,9 +11,10 @@ function parseServices(s) {
 }
 
 export default async function EditClass({ params }) {
-  const { user, profile } = await getProfile();
+  const { user, profile, plan } = await getProfile();
   if (!user) redirect("/login");
   if (!profile?.is_provider) redirect("/dashboard");
+  if (!plan.provider) redirect("/upgrade");
 
   const supabase = createClient();
   const { data: existing } = await supabase.from("classes").select("*").eq("id", params.id).single();

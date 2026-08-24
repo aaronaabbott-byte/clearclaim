@@ -45,6 +45,68 @@ export async function resetAccount(userId, email, confirmEmail) {
   }
 }
 
+function monthsFromNow(months) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + Math.max(1, parseInt(months, 10) || 12));
+  return d.toISOString().slice(0, 10);
+}
+
+// Grant or extend a paid plan for an account (comp). tier: family | provider | both.
+export async function grantPlan(userId, tier, months) {
+  const caller = await requireAdmin();
+  if (!caller) return { ok: false, error: "Not authorized." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Service role key not configured." };
+  const until = monthsFromNow(months);
+  const row = { user_id: userId, updated_at: new Date().toISOString() };
+  if (tier === "family" || tier === "both") row.family_until = until;
+  if (tier === "provider" || tier === "both") row.provider_until = until;
+  const { error } = await admin.from("entitlements").upsert(row);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true, message: `Granted ${tier} through ${until}.` };
+}
+
+// Remove all paid access from an account.
+export async function revokePlan(userId) {
+  const caller = await requireAdmin();
+  if (!caller) return { ok: false, error: "Not authorized." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Service role key not configured." };
+  const { error } = await admin.from("entitlements").upsert({ user_id: userId, family_until: null, provider_until: null, updated_at: new Date().toISOString() });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true, message: "Paid access removed." };
+}
+
+// Create an access / comp code.
+export async function createCode({ code, grants, months, maxUses, note }) {
+  const caller = await requireAdmin();
+  if (!caller) return { ok: false, error: "Not authorized." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Service role key not configured." };
+  const clean = (code || "").trim();
+  if (!clean) return { ok: false, error: "Enter a code." };
+  const { error } = await admin.from("access_codes").insert({
+    code: clean, grants: grants || "family", months: Math.max(1, parseInt(months, 10) || 12),
+    max_uses: maxUses ? parseInt(maxUses, 10) : null, note: note || null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true, message: `Code "${clean}" created.` };
+}
+
+export async function setCodeActive(code, active) {
+  const caller = await requireAdmin();
+  if (!caller) return { ok: false, error: "Not authorized." };
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, error: "Service role key not configured." };
+  const { error } = await admin.from("access_codes").update({ active }).eq("code", code);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin");
+  return { ok: true, message: active ? "Code activated." : "Code deactivated." };
+}
+
 // Add or remove the parent / provider roles on an account — for fixing an
 // accidental role choice at signup.
 export async function setUserRoles(userId, isParent, isProvider) {

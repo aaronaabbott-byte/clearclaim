@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { planFrom } from "@/lib/plan";
 
 const SYSTEM = `You are Ann, a friendly guide inside ClearClaim, an app that helps Arkansas families use their Education Freedom Account (EFA) funds through ClassWallet.
 
@@ -51,6 +52,9 @@ export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ reply: null, error: "unauthorized" }, { status: 401 });
+
+  const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
+  if (!planFrom(ent).family) return NextResponse.json({ reply: "Ask Ann is a Family-plan feature. Upgrade to chat with me any time — open the menu and tap Upgrade.", premium: true });
 
   const { messages = [] } = await request.json().catch(() => ({}));
   const key = process.env.ANTHROPIC_API_KEY;

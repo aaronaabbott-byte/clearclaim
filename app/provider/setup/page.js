@@ -6,7 +6,7 @@ import ProviderProfileForm from "@/app/dashboard/provider-profile";
 export const dynamic = "force-dynamic";
 
 export default async function ProviderSetup() {
-  const { user, profile } = await getProfile();
+  const { user, profile, plan } = await getProfile();
   if (!user) redirect("/login");
 
   return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { planFrom } from "@/lib/plan";
 import ReceiptVault from "./receipt-vault";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,8 @@ export default async function Receipts() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
+  const premium = planFrom(ent).family;
   const { data: kids } = await supabase.from("kids").select("id,first_name,grade")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
@@ -31,7 +34,7 @@ export default async function Receipts() {
         </div>
         {(!kids || kids.length === 0)
           ? <div className="card"><p className="sans" style={{ fontSize: 14 }}>Add a student first, then start filing receipts.</p></div>
-          : <ReceiptVault userId={user.id} kids={kids} initialReceipts={receipts || []} />}
+          : <ReceiptVault userId={user.id} kids={kids} initialReceipts={receipts || []} premium={premium} />}
       </main>
     </>
   );
