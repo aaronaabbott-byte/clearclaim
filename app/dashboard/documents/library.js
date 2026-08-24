@@ -15,8 +15,19 @@ export default function DocumentLibrary({ userId, kids, documents }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [editVal, setEditVal] = useState("");
 
   const kidName = (id) => kids.find(k => k.id === id)?.first_name;
+
+  function startRename(d) { setEditId(d.id); setEditVal(d.label || d.filename || ""); }
+  async function saveRename(id) {
+    const name = editVal.trim();
+    if (!name) { setEditId(null); return; }
+    const { error } = await supabase.from("documents").update({ label: name }).eq("id", id);
+    if (error) { setErr("Couldn't rename: " + error.message); return; }
+    setEditId(null); router.refresh();
+  }
 
   async function upload(e) {
     e.preventDefault();
@@ -93,12 +104,25 @@ export default function DocumentLibrary({ userId, kids, documents }) {
           <div style={{ display: "grid", gap: 8 }}>
             {documents.map(d => (
               <div className="kid" key={d.id} style={{ alignItems: "center" }}>
-                <div style={{ flex: 1 }}>
-                  <b>{d.label || d.filename}</b>
-                  <div className="muted sans" style={{ fontSize: 13 }}>
-                    {d.kind}{d.kid_id ? ` · ${kidName(d.kid_id) || "student"}` : ""}{d.filename ? ` · ${d.filename}` : ""}
-                  </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {editId === d.id ? (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <input value={editVal} onChange={e => setEditVal(e.target.value)} autoFocus
+                        onKeyDown={e => { if (e.key === "Enter") saveRename(d.id); if (e.key === "Escape") setEditId(null); }}
+                        style={{ maxWidth: 280 }} />
+                      <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => saveRename(d.id)}>Save</button>
+                      <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => setEditId(null)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <>
+                      <b>{d.label || d.filename}</b>
+                      <div className="muted sans" style={{ fontSize: 13 }}>
+                        {d.kind}{d.kid_id ? ` · ${kidName(d.kid_id) || "student"}` : ""}{d.filename ? ` · ${d.filename}` : ""}
+                      </div>
+                    </>
+                  )}
                 </div>
+                {editId !== d.id && <button type="button" onClick={() => startRename(d)}>Rename</button>}
                 <button type="button" onClick={() => download(d.path)}>Download</button>
                 <button type="button" onClick={() => remove(d.id, d.path)} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
               </div>

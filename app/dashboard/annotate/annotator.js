@@ -20,6 +20,8 @@ export default function Annotator({ userId }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [docName, setDocName] = useState("");
+  const defaultName = () => `Annotated — ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
 
   function draw() {
     const canvas = canvasRef.current, img = imgRef.current;
@@ -63,11 +65,13 @@ export default function Annotator({ userId }) {
   }
 
   function pos(e) {
-    const r = canvasRef.current.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const c = canvasRef.current, r = c.getBoundingClientRect();
+    const sx = c.width / r.width, sy = c.height / r.height; // canvas may be scaled down on small screens
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
   }
   function down(e) {
     if (!hasImg) return;
+    e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     const p = pos(e);
     if (mode === "label") {
       if (!labelText.trim()) { setErr("Type a label first (e.g. a student's name)."); return; }
@@ -79,6 +83,7 @@ export default function Annotator({ userId }) {
   }
   function move(e) {
     if (!drag) return;
+    e.preventDefault();
     const p = pos(e);
     setDrag(d => ({ ...d, x: Math.min(d._sx, p.x), y: Math.min(d._sy, p.y), w: Math.abs(p.x - d._sx), h: Math.abs(p.y - d._sy) }));
   }
@@ -108,7 +113,7 @@ export default function Annotator({ userId }) {
       const { error: upErr } = await supabase.storage.from("documents").upload(path, blob, { contentType: "image/png" });
       if (upErr) { setErr("Save failed: " + upErr.message); setBusy(false); return; }
       const { error } = await supabase.from("documents").insert({
-        user_id: userId, label: "Annotated image", kind: "annotated", path, filename: path.split("/").pop(),
+        user_id: userId, label: (docName || "").trim() || defaultName(), kind: "annotated", path, filename: path.split("/").pop(),
       });
       if (error) { setErr("Uploaded but couldn't record it: " + error.message); setBusy(false); return; }
       setMsg("Saved to your document library.");
@@ -153,11 +158,15 @@ export default function Annotator({ userId }) {
 
           <div style={{ overflow: "auto", border: "1px solid var(--line)", borderRadius: 10, background: "#faf9f6" }}>
             <canvas ref={canvasRef}
-              onMouseDown={down} onMouseMove={move} onMouseUp={up} onMouseLeave={up}
-              style={{ display: "block", cursor: mode === "label" ? "text" : "crosshair", maxWidth: "100%" }} />
+              onPointerDown={down} onPointerMove={move} onPointerUp={up}
+              style={{ display: "block", cursor: mode === "label" ? "text" : "crosshair", maxWidth: "100%", touchAction: "none" }} />
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+          <div style={{ marginTop: 14 }}>
+            <label>Name for your library (optional)</label>
+            <input value={docName} onChange={e => setDocName(e.target.value)} placeholder={defaultName()} style={{ maxWidth: 360 }} />
+          </div>
+          <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
             <button type="button" className="primary" onClick={downloadPng}>Download PNG</button>
             <button type="button" disabled={busy} onClick={saveToLibrary}>{busy ? "Saving…" : "Save to library"}</button>
           </div>

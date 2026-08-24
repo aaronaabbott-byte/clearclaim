@@ -17,9 +17,17 @@ Rules you must follow:
 - If a purchase could reasonably be read as either core or non-core, return "ambiguous" and explain honestly what pushes it each way. An honest judgment call is better than a confident wrong answer.
 - "core" requires citing one of the ids above verbatim in coreCitation. If you cannot, do not say core.
 - Note when the recreational or hobby exclusion may apply (${config.recreationalExclusion.citation}): ${config.recreationalExclusion.text}
+
+There is a fourth classification, "ineligible", for purchases the rule clearly excludes or that plainly fail the ordinary-and-necessary standard. Use it when the item is:
+- general clothing or footwear (not instructional under 35-102(4); school uniforms are the narrow 35-102(26)(D) exception),
+- primarily recreational, hobby, or entertainment (${config.recreationalExclusion.citation}) with no structured instructional tie,
+- household furnishings, or improvements/fixtures to real property (${config.realPropertyExclusion.citation}),
+- personal food/groceries, a vehicle, or an excluded technology category (televisions, game consoles, home theater, audio equipment, phones — 35-102(26)(Q)(ii),(iii)),
+- or it clearly fails the ordinary (${config.ordinaryCriteria.citation}) and necessary (${config.necessaryCriteria.citation}) criteria with no realistic educational purpose.
+Put the controlling citation in exclusionCitation. Reserve "ineligible" for clear cases — when genuinely unsure between non-core and ineligible, choose "ambiguous" or "non-core".
 - Keep reasoning plain, specific, and short. Cite the subsection you relied on.
 
-Return ONLY minified JSON with these keys: classification ("core" | "non-core" | "ambiguous"), coreCitation (an id from the list, or null), reasoning (string), pushCore (string, what would make it core, or ""), pushNonCore (string, what would make it non-core, or ""). No markdown, no extra keys.`;
+Return ONLY minified JSON with these keys: classification ("core" | "non-core" | "ambiguous" | "ineligible"), coreCitation (an id from the core list, or null), exclusionCitation (a rule citation when classification is "ineligible", else null), reasoning (string), pushCore (string, what would make it core or qualifying, or ""), pushNonCore (string, what would make it non-core, or ""). No markdown, no extra keys.`;
 }
 
 export async function POST(request) {

@@ -33,6 +33,11 @@ export default function Redactor({ userId }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [docName, setDocName] = useState("");
+
+  // A friendly default name so naming is optional. Uses today's date, since a
+  // standalone redaction has no vendor/student to build from.
+  const defaultName = () => `Redacted — ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
 
   function redraw() {
     const base = basesRef.current[cur], view = viewRef.current;
@@ -101,9 +106,13 @@ export default function Redactor({ userId }) {
     setBusy(false);
   }
 
+  // Pointer events unify mouse, touch, and pen — the old mouse-only handlers meant
+  // phones (which never fire mouse events) couldn't draw a box at all. Pointer
+  // capture keeps the drag alive if the finger leaves the canvas; touch-action:none
+  // on the canvas stops a drag from scrolling the page instead of drawing.
   function pos(e) { const r = viewRef.current.getBoundingClientRect(); const sx = viewRef.current.width / r.width, sy = viewRef.current.height / r.height; return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy }; }
-  function down(e) { if (!basesRef.current[cur]) return; const p = pos(e); setDrag({ x: p.x, y: p.y, w: 0, h: 0, _sx: p.x, _sy: p.y }); }
-  function move(e) { if (!drag) return; const p = pos(e); setDrag(d => ({ ...d, x: Math.min(d._sx, p.x), y: Math.min(d._sy, p.y), w: Math.abs(p.x - d._sx), h: Math.abs(p.y - d._sy) })); }
+  function down(e) { if (!basesRef.current[cur]) return; e.preventDefault(); try { e.currentTarget.setPointerCapture(e.pointerId); } catch {} const p = pos(e); setDrag({ x: p.x, y: p.y, w: 0, h: 0, _sx: p.x, _sy: p.y }); }
+  function move(e) { if (!drag) return; e.preventDefault(); const p = pos(e); setDrag(d => ({ ...d, x: Math.min(d._sx, p.x), y: Math.min(d._sy, p.y), w: Math.abs(p.x - d._sx), h: Math.abs(p.y - d._sy) })); }
   function up() { if (drag && drag.w > 4 && drag.h > 4) setPageBoxes(pb => pb.map((p, i) => i === cur ? [...p, { x: drag.x, y: drag.y, w: drag.w, h: drag.h, on: true }] : p)); setDrag(null); }
 
   const toggle = (idx) => setPageBoxes(pb => pb.map((p, i) => i === cur ? p.map((b, j) => j === idx ? { ...b, on: !b.on } : b) : p));
@@ -149,7 +158,8 @@ export default function Redactor({ userId }) {
       const path = `${userId}/library/redacted-${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage.from("documents").upload(path, window._lastRedacted, { contentType: "application/pdf" });
       if (upErr) { setErr("Save failed: " + upErr.message); setBusy(false); return; }
-      await supabase.from("documents").insert({ user_id: userId, label: "Redacted document", kind: "redacted", path, filename: path.split("/").pop() });
+      const label = (docName || "").trim() || defaultName();
+      await supabase.from("documents").insert({ user_id: userId, label, kind: "redacted", path, filename: path.split("/").pop() });
       setMsg("Saved to your document library."); router.refresh();
     } catch (e) { setErr(e.message || "Couldn't save."); }
     setBusy(false);
@@ -176,7 +186,7 @@ export default function Redactor({ userId }) {
       {hasPages && (
         <>
           <div className="sans" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "14px 0" }}>
-            <span className="muted" style={{ fontSize: 12.5 }}>Drag on the page to black out a region.</span>
+            <span className="muted" style={{ fontSize: 12.5 }}>Drag across the page — with a mouse or your finger — to black out a region.</span>
             {count > 0 && <button type="button" onClick={applyAllSuggestions}>Apply all {count} suggestions</button>}
             {basesRef.current.length > 1 && (
               <span className="spacer" style={{ flex: 1, display: "flex", justifyContent: "flex-end", gap: 8 }}>
@@ -188,8 +198,8 @@ export default function Redactor({ userId }) {
           </div>
 
           <div style={{ overflow: "auto", border: "1px solid var(--line)", borderRadius: 10, background: "#faf9f6" }}>
-            <canvas ref={viewRef} onMouseDown={down} onMouseMove={move} onMouseUp={up} onMouseLeave={up}
-              style={{ display: "block", cursor: "crosshair", maxWidth: "100%" }} />
+            <canvas ref={viewRef} onPointerDown={down} onPointerMove={move} onPointerUp={up}
+              style={{ display: "block", cursor: "crosshair", maxWidth: "100%", touchAction: "none" }} />
           </div>
 
           {boxes.length > 0 && (
@@ -212,7 +222,11 @@ export default function Redactor({ userId }) {
             I've reviewed every page and the black boxes cover everything I want removed.
           </label>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+          <div style={{ marginTop: 14 }}>
+            <label>Name for your library (optional)</label>
+            <input value={docName} onChange={e => setDocName(e.target.value)} placeholder={defaultName()} style={{ maxWidth: 360 }} />
+          </div>
+          <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
             <button type="button" className="primary" disabled={busy || !confirmed} onClick={produce}>Produce redacted PDF</button>
             <button type="button" disabled={busy} onClick={saveToLibrary}>Save to library</button>
           </div>

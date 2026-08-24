@@ -17,6 +17,7 @@ export default function ProviderProfileForm({ profile, userId, redirectTo }) {
     contact_email: profile?.contact_email || "",
     contact_phone: profile?.contact_phone || "",
     contact_website: profile?.contact_website || "",
+    sales_tax_rate: profile?.sales_tax_rate ?? "",
   });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState("");
@@ -54,7 +55,8 @@ export default function ProviderProfileForm({ profile, userId, redirectTo }) {
         if (upErr) { setErr("Logo upload failed: " + upErr.message); setBusy(false); return; }
         logo_path = path;
       }
-      const { error } = await supabase.from("profiles").upsert({ user_id: userId, is_provider: true, ...f, logo_path });
+      const payload = { ...f, sales_tax_rate: f.sales_tax_rate === "" || f.sales_tax_rate == null ? null : Number(f.sales_tax_rate) };
+      const { error } = await supabase.from("profiles").upsert({ user_id: userId, is_provider: true, ...payload, logo_path });
       if (error) { setErr("Could not save: " + error.message); setBusy(false); return; }
       setMsg("Saved.");
       router.refresh();
@@ -81,6 +83,12 @@ export default function ProviderProfileForm({ profile, userId, redirectTo }) {
         <div><label>Contact email</label><input value={f.contact_email} onChange={e => set("contact_email", e.target.value)} placeholder="you@business.com" /></div>
         <div><label>Contact phone</label><input value={f.contact_phone} onChange={e => set("contact_phone", e.target.value)} placeholder="(555) 555-5555" /></div>
         <div><label>Website</label><input value={f.contact_website} onChange={e => set("contact_website", e.target.value)} placeholder="www.business.com" /></div>
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        <div><label>Local sales tax rate (%)</label>
+          <input value={f.sales_tax_rate} onChange={e => set("sales_tax_rate", e.target.value)} inputMode="decimal" placeholder="e.g. 9.5" />
+          <p className="finenote" style={{ marginTop: 4 }}>Used to auto-fill tax on invoices. Tax is applied to the item subtotal only, not shipping. You can always edit the amount on each invoice.</p>
+        </div>
       </div>
 
       <div style={{ marginTop: 12 }}>

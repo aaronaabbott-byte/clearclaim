@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { buildInvoicePdf, invoiceTotals, lineTotal } from "@/lib/invoice";
@@ -26,6 +26,19 @@ export default function InvoiceBuilder({ userId, provider, savedItems = [], exis
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+
+  // Auto-fill tax from the provider's saved rate. Tax applies to the item
+  // subtotal only (not shipping). It stays fully editable — once the user types
+  // in the tax field we stop auto-filling. Editing an existing invoice keeps its
+  // saved tax untouched.
+  const rate = Number(provider?.sales_tax_rate) || 0;
+  const subtotal = lines.reduce((s, l) => s + lineTotal(l), 0);
+  const [taxTouched, setTaxTouched] = useState(editing);
+  useEffect(() => {
+    if (rate > 0 && !taxTouched) {
+      setTax(subtotal > 0 ? (Math.round(subtotal * rate) / 100).toFixed(2) : "");
+    }
+  }, [subtotal, rate, taxTouched]);
 
   const setLine = (i, k, v) => setLines(ls => ls.map((l, j) => j === i ? { ...l, [k]: v } : l));
   const addLine = () => setLines(ls => [...ls, blankLine()]);
@@ -126,7 +139,11 @@ export default function InvoiceBuilder({ userId, provider, savedItems = [], exis
 
       <div className="row" style={{ marginTop: 12 }}>
         <div><label>Shipping (optional)</label><input value={shipping} onChange={e => setShipping(e.target.value)} inputMode="decimal" placeholder="0.00" /></div>
-        <div><label>Tax (optional)</label><input value={tax} onChange={e => setTax(e.target.value)} inputMode="decimal" placeholder="0.00" /></div>
+        <div><label>Tax (optional)</label>
+          <input value={tax} onChange={e => { setTax(e.target.value); setTaxTouched(true); }} inputMode="decimal" placeholder="0.00" />
+          {rate > 0 && !taxTouched && <p className="finenote" style={{ marginTop: 4 }}>Auto-filled at {rate}% on the subtotal — edit if needed.</p>}
+          {rate > 0 && taxTouched && <button type="button" className="sans" style={{ fontSize: 12, marginTop: 4 }} onClick={() => setTaxTouched(false)}>Recalculate at {rate}%</button>}
+        </div>
       </div>
 
       <div style={{ marginTop: 12 }}>

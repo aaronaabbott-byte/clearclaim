@@ -6,6 +6,7 @@ const VERDICT = {
   core: ["Core expense", "var(--teal)", "#e7f4f1", "#0f5b52"],
   "non-core": ["Non-core expense", "var(--gold)", "#fbf3e2", "#7a5a12"],
   ambiguous: ["Judgment call", "var(--navy2)", "#eef2f7", "var(--navy)"],
+  ineligible: ["Very unlikely to qualify", "var(--red)", "#fbeeee", "#b3261e"],
 };
 const TONE = { ok: ["#e7f4f1", "#0f5b52"], warn: ["#fbf3e2", "#7a5a12"], stop: ["#fbeeee", "#b3261e"] };
 
@@ -90,6 +91,7 @@ export default function Eligibility({ kids, ruleVersion }) {
               {vc[0]}
             </span>
             {v.coreCitation && <span className="muted sans" style={{ fontSize: 13 }}>{v.coreCitation}</span>}
+            {v.exclusionCitation && <span className="muted sans" style={{ fontSize: 13 }}>{v.exclusionCitation}</span>}
             {v.source === "keyword" && <span className="muted sans" style={{ fontSize: 12 }}>· basic match</span>}
           </div>
 
@@ -115,11 +117,12 @@ export default function Eligibility({ kids, ruleVersion }) {
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             {v.classification !== "core" &&
-              <button type="button" className="primary"
+              <button type="button" className={v.classification === "ineligible" ? "" : "primary"}
                 onClick={() => router.push(`/dashboard/preapproval/new?desc=${encodeURIComponent(desc.slice(0, 300))}`)}>
-                Start a pre-approval request
+                {v.classification === "ineligible" ? "Request pre-approval anyway" : "Start a pre-approval request"}
               </button>}
-            <button type="button" className={v.classification === "core" ? "primary" : ""} onClick={continueToClaim}>Continue to build the claim</button>
+            {v.classification !== "ineligible" &&
+              <button type="button" className={v.classification === "core" ? "primary" : ""} onClick={continueToClaim}>Continue to build the claim</button>}
             <button type="button" onClick={() => setRes(null)}>Check another</button>
           </div>
 
