@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import RedeemCode from "./redeem";
+import { CheckoutButtons, ManageBilling } from "./plan-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +10,9 @@ const FAMILY = ["Ask Ann, any time", "AI-drafted educational-use notes", "Smart 
   "The full pre-approval tool + log", "Unlimited students", "Full receipt vault", "Syllabus builder", "Document redaction & annotation"];
 const PROVIDER = ["Branded course documents on your letterhead", "Class roster with family contacts", "Invoice generator + saved products menu"];
 
-function PlanCard({ title, price, per, features, active, accent }) {
+function PlanCard({ title, price, per, features, active, accent, children }) {
   return (
-    <div className="card" style={{ flex: 1, minWidth: 260, borderColor: accent ? "var(--gold)" : "var(--line)", borderWidth: accent ? 2 : 1 }}>
+    <div className="card" style={{ flex: 1, minWidth: 260, borderColor: accent ? "var(--gold)" : "var(--line)", borderWidth: accent ? 2 : 1, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <h2 style={{ margin: 0 }}>{title}</h2>
         {active && <span className="sans" style={{ fontSize: 12, fontWeight: 700, color: "var(--teal)" }}>✓ Active</span>}
@@ -20,9 +21,10 @@ function PlanCard({ title, price, per, features, active, accent }) {
         <span style={{ fontSize: 26, fontWeight: 700, color: "var(--navy)" }}>{price}</span>
         <span className="muted" style={{ fontSize: 14 }}> {per}</span>
       </div>
-      <ul className="sans" style={{ fontSize: 14, lineHeight: 1.7, paddingLeft: 18, margin: 0, color: "var(--ink)" }}>
+      <ul className="sans" style={{ fontSize: 14, lineHeight: 1.7, paddingLeft: 18, margin: 0, color: "var(--ink)", flex: 1 }}>
         {features.map((f, i) => <li key={i}>{f}</li>)}
       </ul>
+      {children}
     </div>
   );
 }
@@ -48,8 +50,12 @@ export default async function Upgrade() {
         </div>
 
         <div className="row" style={{ marginTop: 4 }}>
-          <PlanCard title="Family" price="$49" per="/year ($6/mo)" features={FAMILY} active={plan.family} accent />
-          <PlanCard title="Provider" price="$79" per="/year ($9/mo)" features={PROVIDER} active={plan.provider} />
+          <PlanCard title="Family" price="$10" per="/mo — or $99/yr (2 months free)" features={FAMILY} active={plan.family} accent>
+            {plan.family ? <ManageBilling /> : <CheckoutButtons tier="family" monthly="$10" yearly="$99" />}
+          </PlanCard>
+          <PlanCard title="Provider" price="$19" per="/mo — or $189/yr (2 months free)" features={PROVIDER} active={plan.provider}>
+            {plan.provider ? <ManageBilling /> : <CheckoutButtons tier="provider" monthly="$19" yearly="$189" />}
+          </PlanCard>
         </div>
 
         <div className="card">
@@ -62,7 +68,8 @@ export default async function Upgrade() {
 
         <div className="card">
           <p className="sans" style={{ fontSize: 14, margin: 0 }}>
-            Online checkout is coming soon. In the meantime, to subscribe or request an access code, email{" "}
+            Secure checkout is handled by Stripe — we never see your card number. Cancel anytime from Manage billing.
+            Questions? Email{" "}
             <a href="mailto:clearclaimhelp@gmail.com" style={{ color: "var(--navy2)" }}>clearclaimhelp@gmail.com</a>.
           </p>
         </div>
