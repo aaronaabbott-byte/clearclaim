@@ -27,6 +27,24 @@ const DOC_MATRIX = [
   ["Direct Pay / Marketplace — a product", "Link the vendor with a payment request when you can. Otherwise a precise invoice with each item described, plus proof of need — a curriculum supply list, or how the item meets specific learning objectives."],
 ];
 
+// Baseline documentation ClassWallet requires on every submission, per the EFA
+// program guidance. Reimbursement receipts must also prove payment; direct-pay
+// invoices don't (they aren't paid yet).
+const RECEIPT_REQ = [
+  "Vendor's name",
+  "Student's name (required for services)",
+  "A clear name or description of the expense",
+  "Itemized prices and a total",
+  "Confirmation of payment (method, amount paid, etc.)",
+  "Date of payment",
+];
+const INVOICE_REQ = [
+  "Vendor's name",
+  "Student's name (required for services)",
+  "A clear name or description of the expense",
+  "Itemized prices and a total",
+];
+
 const TIPS = [
   "The receipt must show a real date, not 'Today', plus the store name and the payment method.",
   "Always include a proof-of-payment screenshot, and it is essentially required for PayPal orders.",
@@ -70,7 +88,29 @@ export default async function SubmitSteps() {
             ))}
           </ol>
 
-          <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", marginTop: 6 }}>What to attach, by submission type</h3>
+          <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", marginTop: 6 }}>What every submission must show</h3>
+          <p className="muted sans" style={{ fontSize: 13.5, marginTop: 2, marginBottom: 8 }}>
+            Whatever the expense, ClassWallet requires this information to be present on your documentation before it
+            can be approved. Some expenses need more (for example, a photo of the curriculum an item supports), but
+            these are the baseline.
+          </p>
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+            <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px" }}>
+              <div className="sans" style={{ fontWeight: 700, fontSize: 14, color: "var(--navy)" }}>Receipts (for reimbursement)</div>
+              <ul className="sans" style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink)", margin: "6px 0 0", paddingLeft: 18 }}>
+                {RECEIPT_REQ.map((r, i) => <li key={i} style={{ marginBottom: 3 }}>{r}</li>)}
+              </ul>
+            </div>
+            <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px" }}>
+              <div className="sans" style={{ fontWeight: 700, fontSize: 14, color: "var(--navy)" }}>Invoices (for direct pay)</div>
+              <ul className="sans" style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--ink)", margin: "6px 0 0", paddingLeft: 18 }}>
+                {INVOICE_REQ.map((r, i) => <li key={i} style={{ marginBottom: 3 }}>{r}</li>)}
+              </ul>
+              <p className="finenote" style={{ marginTop: 8 }}>An invoice isn't paid yet, so it doesn't need proof of payment or a payment date.</p>
+            </div>
+          </div>
+
+          <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", marginTop: 18 }}>What to attach, by submission type</h3>
           <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
             {DOC_MATRIX.map(([type, docs], i) => (
               <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(160px, 220px) 1fr", gap: 12, border: "1px solid var(--line)", borderRadius: 10, padding: "9px 12px", alignItems: "start" }}>

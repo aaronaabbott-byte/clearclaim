@@ -95,6 +95,10 @@ export default function InvoiceBuilder({ userId, provider, savedItems = [], exis
       <p className="muted sans" style={{ fontSize: 14, marginTop: -4 }}>
         Fill in who it's for, add your services, and download a clean invoice on your letterhead — ready to upload to ClassWallet.
       </p>
+      <p className="finenote" style={{ marginTop: 6, background: "#f4f7fb", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }}>
+        For ClassWallet to accept a direct-pay invoice it must show: your business name, the student's name (for services),
+        a clear description of each item, and itemized prices with a total. The fields below cover all of these.
+      </p>
 
       <div className="row" style={{ marginTop: 10 }}>
         <div><label>Student name</label><input value={student} onChange={e => setStudent(e.target.value)} placeholder="e.g. Alex Banks" /></div>
