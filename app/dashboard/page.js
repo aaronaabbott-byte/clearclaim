@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps } from "@/lib/rules";
+import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps, capContribution, sumCapEntries } from "@/lib/rules";
 import { isAdmin } from "@/lib/admin";
 import { getProfile } from "@/lib/profile";
 import { schoolYearLabel } from "@/lib/compliance";
@@ -25,6 +25,7 @@ export default async function Dashboard() {
     .order("created_at", { ascending: true });
   const hasKids = kids && kids.length > 0;
   const { data: claims } = await supabase.from("claims").select("*").order("created_at", { ascending: false });
+  const { data: capEntries } = await supabase.from("cap_entries").select("*");
   const { data: allSyllabi } = await supabase.from("syllabi").select("id,kid_id,title,subject,term,branded").order("created_at", { ascending: false });
   const syllabi = (allSyllabi || []).filter(s => !s.branded);
   const { data: preapprovals } = await supabase.from("preapprovals").select("*").order("created_at", { ascending: false });
@@ -44,9 +45,11 @@ export default async function Dashboard() {
     { key: "extracurricular", label: "Extracurricular / PE / field trips" },
     { key: "travel", label: "Travel / mileage" },
   ];
-  const usedBy = (kidId, capKey) => (claims || [])
-    .filter(c => c.kid_id === kidId && (categoryCap(c.category) || {}).key === capKey && inBudgetYear(c, BY))
-    .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const usedBy = (kidId, capKey) =>
+    (claims || [])
+      .filter(c => c.kid_id === kidId && (categoryCap(c.category) || {}).key === capKey && inBudgetYear(c, BY))
+      .reduce((s, c) => s + capContribution(c), 0)
+    + sumCapEntries(capEntries, kidId, capKey, BY);
 
   // Onboarding gate: no students yet -> focused first-run screen.
   if (!hasKids) {
@@ -238,7 +241,7 @@ export default async function Dashboard() {
         <div className="card">
           <h2>Budget this year <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· {BY.label}</span></h2>
           <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
-            Capped categories, per student. Amounts add up across all claims dated Jul–Jun.
+            Capped categories, per student. Adds up claims and any marketplace/approved spend you've logged, dated Jul–Jun. Technology counts base price (before tax &amp; shipping).
           </p>
           {kids.map(k => {
             const caps = annualCaps(k.funding_tier);

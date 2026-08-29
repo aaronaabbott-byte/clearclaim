@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
   categoryCap, efaBudgetYear, priorCapSpend } from "@/lib/rules";
+const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
 import { buildPacketPdfs } from "@/lib/packet";
 
 const DOT = { ok: "var(--teal)", warn: "var(--gold)", fail: "var(--red)" };
@@ -17,6 +18,7 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
   const [pathway, setPathway] = useState("reimbursement");
   const [vendor, setVendor] = useState(prefill.vendor || "");
   const [amount, setAmount] = useState(prefill.amount || "");
+  const [basePrice, setBasePrice] = useState("");   // tech cap counts base price (pre-tax/shipping)
   const [date, setDate] = useState("");
   const [category, setCategory] = useState(prefill.category || "");
   const [items, setItems] = useState(initialItems);
@@ -37,7 +39,9 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
   // while parent-name receipts are generally fine for physical supplies.
   const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson|tuition|therapy/i.test(category || "");
 
-  const claim = { vendor, pathway, amount, date, category, items, purpose, reasoning,
+  const techCat = isTechCategory(category);
+  const base_price = techCat && Number(basePrice) > 0 ? Number(basePrice) : null;
+  const claim = { vendor, pathway, amount, base_price, date, category, items, purpose, reasoning,
     receipt_count: receipts.length, payment_count: payments.length };
 
   // Running budget for the annual caps (tech $1,000; two separate 25% caps).
@@ -45,20 +49,24 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
   const by = efaBudgetYear(date);
   const prior = cap ? priorCapSpend(claims, kidId, cap.key, by) : 0;
   const amt = Number(amount) || 0;
-  const projected = prior + amt;
+  // The tech cap counts base price (pre-tax, pre-shipping) when provided.
+  const capAmt = techCat && base_price ? base_price : amt;
+  const projected = prior + capAmt;
   const overBy = cap ? projected - cap.amount : 0;
 
   const checks = useMemo(() => {
     const base = checkClaim(claim);
-    if (cap && amt > 0) {
+    if (cap && capAmt > 0) {
       base.push({
         level: overBy > 0 ? "fail" : (projected > cap.amount * 0.85 ? "warn" : "ok"),
-        msg: `${cap.label} budget ${by.label}: ${money(prior)} already claimed + ${money(amt)} = ${money(projected)} of ${money(cap.amount)}`
+        msg: `${cap.label} budget ${by.label}: ${money(prior)} already counted + ${money(capAmt)}`
+          + (techCat && base_price ? " (base price)" : "")
+          + ` = ${money(projected)} of ${money(cap.amount)}`
           + (overBy > 0 ? ` — over by ${money(overBy)}. Needs a documented, pre-approved exception.` : ` (${money(cap.amount - projected)} left).`),
       });
     }
     return base;
-  }, [vendor, pathway, amount, date, category, items, purpose, reasoning, receipts.length, payments.length, kidId, prior]);
+  }, [vendor, pathway, amount, basePrice, date, category, items, purpose, reasoning, receipts.length, payments.length, kidId, prior]);
   const blocking = checks.filter(c => c.level === "fail").length;
 
   const suggested = useMemo(() => draftReasoning({ ...claim, purpose }, kid),
@@ -115,7 +123,7 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
       const finalReasoning = reasoning || suggested;
       const { data: row, error } = await supabase.from("claims").insert({
         user_id: userId, kid_id: kidId, vendor, pathway,
-        amount: +amount, date: date || null, category, items,
+        amount: +amount, base_price, date: date || null, category, items,
         purpose, reasoning: finalReasoning,
         status: blocking ? "draft" : "ready",
       }).select("id").single();
@@ -172,10 +180,22 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
 
       <div className="row" style={{ marginTop: 8 }}>
         <div><label>Store / vendor</label><input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. Amazon" /></div>
-        <div><label>Amount (your portion)</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="e.g. 84.20" /></div>
+        <div><label>{pathway === "marketplace" ? "Order total" : pathway === "directpay" ? "Amount billed" : "Amount (your portion)"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="e.g. 84.20" /></div>
         {fields.date !== false &&
-          <div><label>Date on receipt</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>}
+          <div><label>{pathway === "marketplace" ? "Order date" : "Date on receipt"}</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>}
       </div>
+
+      {techCat && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <div>
+            <label>Base price for the tech cap (before tax &amp; shipping)</label>
+            <input value={basePrice} onChange={e => setBasePrice(e.target.value)} inputMode="decimal" placeholder="e.g. 799.00" />
+            <p className="finenote" style={{ marginTop: 4 }}>
+              The $1,000 technology cap counts the item's base price only — not tax or shipping. Leave blank to count the full amount above.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="row" style={{ marginTop: 8 }}>
         <div><label>Category</label>

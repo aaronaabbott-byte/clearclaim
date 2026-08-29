@@ -2,7 +2,7 @@ import Link from "next/link";
 import { planFrom } from "@/lib/plan";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { categoryCap, efaBudgetYear, inBudgetYear } from "@/lib/rules";
+import { categoryCap, efaBudgetYear, inBudgetYear, capContribution, sumCapEntries } from "@/lib/rules";
 import PreapprovalBuilder from "../builder";
 
 export default async function NewPreapproval({ searchParams }) {
@@ -13,11 +13,13 @@ export default async function NewPreapproval({ searchParams }) {
   const { data: rawKids } = await supabase.from("kids").select("id,first_name,grade,prior_tech")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
-  const { data: claims } = await supabase.from("claims").select("kid_id,category,amount,date,created_at");
+  const { data: claims } = await supabase.from("claims").select("kid_id,category,amount,base_price,date,created_at");
+  const { data: capEntries } = await supabase.from("cap_entries").select("*");
   const BY = efaBudgetYear();
   const techUsed = (kidId) => (claims || [])
     .filter(c => c.kid_id === kidId && (categoryCap(c.category) || {}).key === "technology" && inBudgetYear(c, BY))
-    .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    .reduce((s, c) => s + capContribution(c), 0)
+    + sumCapEntries(capEntries, kidId, "technology", BY);
   const kids = (rawKids || []).map(k => ({ ...k, tech_used: techUsed(k.id) }));
   const seed = (searchParams?.desc || "").toString();
 

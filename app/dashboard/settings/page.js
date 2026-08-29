@@ -5,6 +5,7 @@ import { getProfile } from "@/lib/profile";
 import { KidForm, KidEdit } from "../students";
 import StudentReorder from "../student-reorder";
 import ProviderProfileForm from "../provider-profile";
+import CapLogger from "../cap-logger";
 
 export default async function Settings() {
   const supabase = createClient();
@@ -17,6 +18,10 @@ export default async function Settings() {
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
   const hasKids = kids && kids.length > 0;
+
+  const { data: capEntries } = await supabase.from("cap_entries")
+    .select("*").order("created_at", { ascending: false });
+  const entriesFor = (kidId) => (capEntries || []).filter(e => e.kid_id === kidId);
 
   return (
     <>
@@ -69,6 +74,19 @@ export default async function Settings() {
                   fields clear instead of carrying the last student's values over. */}
               <KidForm key={kids?.length ?? 0} first={!hasKids} />
             </div>
+
+            {hasKids && (
+              <div className="card">
+                <h2>Track marketplace &amp; approved spend</h2>
+                <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
+                  For orders that don't go through a claim packet — like an approved ClassWallet Marketplace purchase —
+                  log the base price here so it still counts against the caps on your dashboard.
+                </p>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {kids.map(k => <CapLogger key={k.id} kid={k} entries={entriesFor(k.id)} />)}
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>

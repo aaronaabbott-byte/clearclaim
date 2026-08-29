@@ -71,6 +71,40 @@ export async function reorderKids(ids) {
   revalidatePath("/dashboard/settings");
 }
 
+// Log spend that never became a full claim (e.g. an approved ClassWallet
+// Marketplace order) so it still counts toward the student's caps. Amount is the
+// BASE price (pre-tax, pre-shipping).
+export async function addCapEntry(formData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const kid_id = formData.get("kid_id");
+  const amount = Number(formData.get("amount"));
+  const category = formData.get("category") || null;
+  if (!kid_id || !category || !(amount > 0)) return;
+  await supabase.from("cap_entries").insert({
+    user_id: user.id,
+    kid_id,
+    category,
+    label: (formData.get("label") || "").trim() || null,
+    amount,
+    entry_date: formData.get("entry_date") || null,
+    note: (formData.get("note") || "").trim() || null,
+  });
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
+}
+
+export async function deleteCapEntry(formData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from("cap_entries").delete()
+    .eq("id", formData.get("id")).eq("user_id", user.id);
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
+}
+
 export async function signOut() {
   const supabase = createClient();
   await supabase.auth.signOut();
