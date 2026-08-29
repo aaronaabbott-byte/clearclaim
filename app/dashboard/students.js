@@ -46,10 +46,11 @@ export function KidForm({ first = true }) {
   );
 }
 
-// Inline editable student card.
-export function KidEdit({ k }) {
-  return (
-    <div className="kid" style={{ display: "block", padding: "16px 18px" }}>
+// Inline editable student card. `bare` drops the outer box so it can be nested
+// inside a per-student card that also holds the cap tracker.
+export function KidEdit({ k, bare = false }) {
+  const inner = (
+    <>
       <form action={updateKid}>
         <input type="hidden" name="id" value={k.id} />
         <div className="row">
@@ -77,8 +78,10 @@ export function KidEdit({ k }) {
         <input type="hidden" name="id" value={k.id} />
         <button style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Remove student</button>
       </form>
-    </div>
+    </>
   );
+  if (bare) return inner;
+  return <div className="kid" style={{ display: "block", padding: "16px 18px" }}>{inner}</div>;
 }
 
 // App header. `settings` shows a gear link; sign-out always present.

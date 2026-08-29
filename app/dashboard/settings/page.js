@@ -57,33 +57,45 @@ export default async function Settings() {
 
         {isParent && (
           <>
+            {/* Order + Add a student, together with nothing between them. */}
             <div className="card">
               <h2>Students</h2>
               <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
-                Add, edit, remove, or reorder your students. This order is used everywhere, so put them however is
-                easiest to track — birth order works well. These details carry into every claim and syllabus.
+                Reorder your students (the order is used everywhere — birth order works well), then add a new one.
+                Edit each student's details further down.
               </p>
-              {hasKids && <StudentReorder kids={kids.map(k => ({ id: k.id, first_name: k.first_name, grade: k.grade }))} />}
-              {hasKids ? kids.map(k => <KidEdit key={k.id} k={k} />)
+              {hasKids
+                ? <StudentReorder kids={kids.map(k => ({ id: k.id, first_name: k.first_name, grade: k.grade }))} />
                 : <p className="muted sans" style={{ fontSize: 14 }}>No students yet — add your first below.</p>}
+              <div style={{ marginTop: hasKids ? 16 : 4, paddingTop: hasKids ? 16 : 0, borderTop: hasKids ? "1px solid var(--line)" : "none" }}>
+                <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", margin: "0 0 8px" }}>Add a student</h3>
+                {/* key on the student count remounts the form after each add, so the
+                    fields clear instead of carrying the last student's values over. */}
+                <KidForm key={kids?.length ?? 0} first={!hasKids} />
+              </div>
             </div>
 
-            <div className="card">
-              <h2>Add a student</h2>
-              {/* key on the student count remounts the form after each add, so the
-                  fields clear instead of carrying the last student's values over. */}
-              <KidForm key={kids?.length ?? 0} first={!hasKids} />
-            </div>
-
+            {/* One box per student: their details and their cap tracking stacked
+                together, so everything for a student lives in one place. */}
             {hasKids && (
               <div className="card">
-                <h2>Track marketplace &amp; approved spend</h2>
+                <h2>Student details &amp; tracking</h2>
                 <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
-                  For orders that don't go through a claim packet — like an approved ClassWallet Marketplace purchase —
-                  log the base price here so it still counts against the caps on your dashboard.
+                  Edit a student and log any marketplace / approved spend for them in the same place. Logged spend counts
+                  toward the caps on your dashboard.
                 </p>
-                <div style={{ display: "grid", gap: 10 }}>
-                  {kids.map(k => <CapLogger key={k.id} kid={k} entries={entriesFor(k.id)} />)}
+                <div style={{ display: "grid", gap: 14 }}>
+                  {kids.map(k => (
+                    <div key={k.id} className="kid" style={{ display: "block", padding: "16px 18px" }}>
+                      <div className="sans" style={{ fontWeight: 700, fontSize: 15, color: "var(--navy)", marginBottom: 10 }}>
+                        {k.first_name}{k.grade ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · grade {k.grade}</span> : null}
+                      </div>
+                      <KidEdit k={k} bare />
+                      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+                        <CapLogger kid={k} entries={entriesFor(k.id)} bare />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

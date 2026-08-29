@@ -8,10 +8,13 @@ const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 const shortCap = (c) => (categoryCap(c) || {}).label || c;
 
 // Per-student logger for approved/marketplace spend that never became a claim.
-export default function CapLogger({ kid, entries = [] }) {
-  return (
-    <div className="kid" style={{ display: "block", padding: "14px 16px" }}>
-      <div className="sans" style={{ fontWeight: 700, fontSize: 14 }}>{kid.first_name}</div>
+// `bare` drops the outer box and repeated name so it can nest under a per-student
+// card that already shows the name.
+export default function CapLogger({ kid, entries = [], bare = false }) {
+  const inner = (
+    <>
+      {!bare && <div className="sans" style={{ fontWeight: 700, fontSize: 14 }}>{kid.first_name}</div>}
+      <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)", marginBottom: 2 }}>Track marketplace / approved spend</div>
       <p className="finenote" style={{ marginTop: 2, marginBottom: 10 }}>
         Log an approved ClassWallet Marketplace or other order here so it counts toward the caps, even without a full claim.
         Enter the <b>base price</b> (before tax &amp; shipping).
@@ -52,6 +55,8 @@ export default function CapLogger({ kid, entries = [] }) {
         </div>
         <button className="primary" style={{ marginTop: 10 }}>Add to tracking</button>
       </form>
-    </div>
+    </>
   );
+  if (bare) return inner;
+  return <div className="kid" style={{ display: "block", padding: "14px 16px" }}>{inner}</div>;
 }
