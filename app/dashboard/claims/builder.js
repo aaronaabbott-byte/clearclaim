@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
   categoryCap, efaBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
+import { checkClaimAZ } from "@/lib/states/az-rules";
 const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
 const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 import { buildPacketPdfs } from "@/lib/packet";
@@ -43,7 +44,16 @@ function FileField({ files, onAdd, onRemove, hint }) {
   );
 }
 
-export default function ClaimBuilder({ kids, userId, claims = [], documents = [], initialItems = "", initialNote = "", prefill = {}, premium = false }) {
+export default function ClaimBuilder({
+  kids, userId, claims = [], documents = [], initialItems = "", initialNote = "", prefill = {}, premium = false,
+  state = "AR",
+  categories = CATEGORIES,
+  pathways = PATHWAYS,
+  pathwayFields = PATHWAY_FIELDS,
+  features = { splitReimbursement: true, techCap: true, percentCaps: true },
+}) {
+  const runCheck = state === "AZ" ? checkClaimAZ : checkClaim;
+  const showCaps = !!(features.techCap || features.percentCaps);
   const router = useRouter();
   const supabase = createClient();
 
@@ -70,20 +80,21 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
   const [err, setErr] = useState("");
 
   const kid = kids.find(k => k.id === kidId);
-  const fields = PATHWAY_FIELDS[pathway] || {};
+  const fields = (pathwayFields || PATHWAY_FIELDS)[pathway] || {};
 
   // Reported-practice flag (not a 6 CAR Part 35 rule): families say services,
   // tutoring, and Direct Pay tend to want the student's name on the invoice,
   // while parent-name receipts are generally fine for physical supplies.
   const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson|tuition|therapy/i.test(category || "");
 
-  const techCat = isTechCategory(category);
+  const techCat = isTechCategory(category) && features.techCap;
   const base_price = techCat && Number(basePrice) > 0 ? Number(basePrice) : null;
   const claim = { vendor, pathway, amount, base_price, date, category, items, purpose, reasoning,
     receipt_count: receipts.length, payment_count: payments.length };
 
   // Running budget for the annual caps (tech $1,000; two separate 25% caps).
-  const cap = categoryCap(category, kid?.funding_tier);
+  // Only states with caps (Arkansas) show this.
+  const cap = showCaps ? categoryCap(category, kid?.funding_tier) : null;
   const by = efaBudgetYear(date);
   const prior = cap ? priorCapSpend(claims, kidId, cap.key, by) : 0;
   const amt = Number(amount) || 0;
@@ -93,7 +104,7 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
   const overBy = cap ? projected - cap.amount : 0;
 
   const checks = useMemo(() => {
-    const base = checkClaim(claim);
+    const base = runCheck(claim);
     if (cap && capAmt > 0) {
       base.push({
         level: overBy > 0 ? "fail" : (projected > cap.amount * 0.85 ? "warn" : "ok"),
@@ -193,6 +204,9 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
   async function gatherImages() { return [...images(), ...await vaultImages()]; }
 
   // The claim(s) to produce. One per student when splitting, else just this one.
+  // Build the claim(s), each carrying its own state-correct pre-submission
+  // checks (_checks) so the packet cover shows the right state's checklist.
+  function withChecks(c) { return { ...c, _checks: runCheck(c) }; }
   function claimVariants() {
     const finalReasoning = reasoning || suggested;
     if (splitOn && splitKids.length > 1) {
@@ -200,14 +214,14 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
       const grp = uuid();
       return splitShares.map(s => ({
         kid: kids.find(k => k.id === s.id),
-        claim: {
+        claim: withChecks({
           ...claim, kid_id: s.id, amount: s.amount,
           base_price: (techCat && base_price && totalCents) ? Math.round(base_price * (s.cents / totalCents) * 100) / 100 : null,
           reasoning: finalReasoning, purpose, split_group: grp, split_note: note,
-        },
+        }),
       }));
     }
-    return [{ kid, claim: { ...claim, kid_id: kidId, amount: +amount, base_price, reasoning: finalReasoning, purpose, split_group: null, split_note: null } }];
+    return [{ kid, claim: withChecks({ ...claim, kid_id: kidId, amount: +amount, base_price, reasoning: finalReasoning, purpose, split_group: null, split_note: null }) }];
   }
 
   function packetNameFor(kidName, i, total) {
@@ -299,7 +313,7 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
         </div>
         <div><label>Pathway</label>
           <select value={pathway} onChange={e => setPathway(e.target.value)}>
-            {PATHWAYS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            {pathways.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
       </div>
@@ -327,7 +341,7 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
         <div><label>Category</label>
           <select value={category} onChange={e => setCategory(e.target.value)}>
             <option value="">Choose one…</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div><label>Items (comma-separated)</label><input value={items} onChange={e => setItems(e.target.value)} placeholder="e.g. Latin primer, dry-erase markers" /></div>
@@ -350,18 +364,22 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
         </div>
       )}
 
-      {pathway === "reimbursement" && (
+      {(fields.receipt || fields.payment) && (
         <div className="row" style={{ marginTop: 12 }}>
-          <div>
-            <label>Receipt (photo, screenshot, or PDF)</label>
-            <FileField files={receipts} onAdd={list => addFiles(setReceipts, list)} onRemove={i => removeAt(setReceipts, i)}
-              hint="Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you." />
-          </div>
-          <div>
-            <label>Bank / card charge (photo, screenshot, or PDF)</label>
-            <FileField files={payments} onAdd={list => addFiles(setPayments, list)} onRemove={i => removeAt(setPayments, i)}
-              hint="Single transaction showing amount, date, merchant. Required for PayPal." />
-          </div>
+          {fields.receipt && (
+            <div>
+              <label>Receipt (photo, screenshot, or PDF)</label>
+              <FileField files={receipts} onAdd={list => addFiles(setReceipts, list)} onRemove={i => removeAt(setReceipts, i)}
+                hint="Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you." />
+            </div>
+          )}
+          {fields.payment && (
+            <div>
+              <label>Bank / card charge (photo, screenshot, or PDF)</label>
+              <FileField files={payments} onAdd={list => addFiles(setPayments, list)} onRemove={i => removeAt(setPayments, i)}
+                hint="Single transaction showing amount, date, merchant. Required for PayPal." />
+            </div>
+          )}
         </div>
       )}
 
@@ -384,15 +402,15 @@ export default function ClaimBuilder({ kids, userId, claims = [], documents = []
         </div>
       )}
 
-      {/* Split reimbursement across funded students */}
-      {kids.length > 1 && pathway !== "directpay" && (
+      {/* Split reimbursement across funded students (Arkansas-style caps only) */}
+      {features.splitReimbursement && kids.length > 1 && pathway !== "directpay" && (
         <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
           <label className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontWeight: 700, fontSize: 13, color: "var(--navy)", cursor: "pointer" }}>
             <input type="checkbox" checked={splitOn} onChange={e => { setSplitOn(e.target.checked); if (e.target.checked && !splitIds.length) setSplitIds([kidId]); }} style={{ width: 16, height: 16 }} />
             Split this receipt across students
           </label>
           <p className="finenote" style={{ marginTop: 4, marginBottom: splitOn ? 10 : 0 }}>
-            Required for one-per-family capped items — a gym membership, a household printer, a co-op fee, a shared garden bed.
+            Required for one-per-family items — a gym membership, a household printer, a chicken coop, a shared garden bed.
             Each student gets their own submission showing the math, with the same receipt attached.
           </p>
           {splitOn && (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { planFrom } from "@/lib/plan";
+import { getStateConfig } from "@/lib/states";
 import ClaimBuilder from "../builder";
 
 export default async function NewClaim({ searchParams }) {
@@ -10,6 +11,8 @@ export default async function NewClaim({ searchParams }) {
   if (!user) redirect("/login");
   const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
   const premium = planFrom(ent).family;
+  const { data: prof } = await supabase.from("profiles").select("state").eq("user_id", user.id).single();
+  const cfg = getStateConfig(prof?.state);
   const { data: kids } = await supabase.from("kids").select("*")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
@@ -33,7 +36,8 @@ export default async function NewClaim({ searchParams }) {
       </header>
       <main>
         <ClaimBuilder kids={kids || []} userId={user.id} claims={claims || []} documents={documents || []}
-          initialItems={initialItems} initialNote={initialNote} prefill={prefill} premium={premium} />
+          initialItems={initialItems} initialNote={initialNote} prefill={prefill} premium={premium}
+          state={cfg.code} categories={cfg.categories} pathways={cfg.pathways} pathwayFields={cfg.pathwayFields} features={cfg.features} />
       </main>
     </>
   );

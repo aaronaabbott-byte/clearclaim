@@ -14,7 +14,9 @@ import UpgradeBanner from "./upgrade-banner";
 
 export default async function Dashboard() {
   const supabase = createClient();
-  const { user, profile, plan } = await getProfile();
+  const { user, profile, plan, stateConfig } = await getProfile();
+  const feat = stateConfig?.features || {};
+  const showCaps = !!(feat.techCap || feat.percentCaps);
   const isFree = !plan?.family && !plan?.provider;
   if (!user) redirect("/login");
   // Provider-only accounts land in the provider view.
@@ -234,10 +236,28 @@ export default async function Dashboard() {
           </p>
         </div>
 
-        <CocurricularGuide />
+        {feat.coCurricularChecklist && <CocurricularGuide />}
 
         {hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
 
+        {feat.quarterlyDeadlines && (
+          <div className="card">
+            <h2>Documentation deadlines <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· {stateConfig.programShort}</span></h2>
+            <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 10 }}>
+              Upload receipts and documentation by the end of the month after each quarter, or you may have to repay the purchase.
+            </p>
+            <div style={{ display: "grid", gap: 6 }}>
+              {(stateConfig.deadlines || []).map(d => (
+                <div key={d.q} className="sans" style={{ display: "flex", fontSize: 13.5, borderBottom: "1px solid var(--line)", paddingBottom: 5 }}>
+                  <span style={{ flex: 1 }}>Q{d.q} · {d.dates}</span>
+                  <span style={{ fontWeight: 700, color: "var(--navy)" }}>Due {d.due}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showCaps && (
         <div className="card">
           <h2>Budget this year <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· {BY.label}</span></h2>
           <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
@@ -274,6 +294,7 @@ export default async function Dashboard() {
             </div>
           );})}
         </div>
+        )}
       </main>
     </>
   );
