@@ -11,6 +11,9 @@ import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
 import PreapprovalStatus from "./preapproval-status";
 import UpgradeBanner from "./upgrade-banner";
+import DemoReset from "./demo-reset";
+
+const DEMO_EMAIL = "demo@clearclaimapp.com";
 
 export default async function Dashboard() {
   const supabase = createClient();
@@ -18,6 +21,7 @@ export default async function Dashboard() {
   const feat = stateConfig?.features || {};
   const showCaps = !!(feat.techCap || feat.percentCaps);
   const isFree = !plan?.family && !plan?.provider;
+  const isDemo = (user?.email || "").toLowerCase() === DEMO_EMAIL;
   if (!user) redirect("/login");
   // Provider-only accounts land in the provider view.
   if (profile?.is_provider && !profile?.is_parent) redirect("/provider");
@@ -85,6 +89,7 @@ export default async function Dashboard() {
     <>
       <Bar email={user.email} admin={isAdmin(user.email)} providerView={isProvider} />
       <main>
+        {isDemo && <DemoReset />}
         {isFree && <UpgradeBanner />}
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
