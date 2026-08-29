@@ -22,6 +22,7 @@ export default function SyllabusBuilder({ kids = [], userId, existing, provider 
     instructor: existing?.instructor || "",
     description: existing?.description || "",
     objectives: existing?.objectives || "",
+    methods: existing?.methods || "",
     standards: existing?.standards || "",
     materials: existing?.materials || "",
     schedule: existing?.schedule || "",
@@ -164,11 +165,12 @@ export default function SyllabusBuilder({ kids = [], userId, existing, provider 
         </button>
       </div>
 
-      <Area label="Course description" k="description" rows={3} ph="What the course covers and how it's taught." />
+      <Area label="Course of study" k="description" rows={3} ph="What the course covers and how it's taught." />
       <Area label="Learning objectives" k="objectives" rows={5} ph="Measurable things the student will know or be able to do." />
+      <Area label="Teaching methods & lesson plans" k="methods" rows={4} ph="How lessons are taught — teaching approach, lesson structure, activities and exercises. (Required for Arizona curriculum documentation.)" />
       <Area label="Standards & skills alignment" k="standards" rows={3} ph="Standards or subject-area skills the course lines up with." />
-      <Area label="Materials & curriculum" k="materials" rows={3} ph="Texts, workbooks, and resources used." />
-      <Area label="Course schedule" k="schedule" rows={6} ph="Week-by-week or unit plan." />
+      <Area label="Required materials" k="materials" rows={3} ph="Texts, workbooks, and resources required to meet the objectives." />
+      <Area label="Scope & sequence (schedule)" k="schedule" rows={6} ph="Week-by-week or unit plan." />
       <Area label="Assessment & grading" k="assessment" rows={4} ph="How progress is measured and graded." />
 
       {err && <p style={{ color: "var(--red)", fontSize: 13 }}>{err}</p>}

@@ -19,10 +19,11 @@ export async function POST(request) {
 
   const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
   const prompt =
-`You are helping a homeschool parent write a real course syllabus that documents educational use for an Arkansas EFA education-fund review.
-Produce a specific, credible syllabus for the course below. Ground it in the grade level and the listed materials. Objectives must be measurable; the schedule should be a realistic term-long plan; assessment must explain how progress is graded.
+`You are helping a homeschool parent write a real course syllabus that also works as formal curriculum documentation for an education-savings-account review (Arizona ESA or Arkansas EFA).
+Produce a specific, credible syllabus for the course below. Ground it in the grade level and the listed materials. Objectives must be measurable; "methods" must describe the teaching approach, lesson-plan structure, and the kinds of activities and exercises used; the schedule should be a realistic term-long scope and sequence; "materials" should list the required materials tied to the objectives; assessment must explain how progress is graded.
+Do not assume the student's gender — use the student's name or "the student", never he/she/him/her.
 
-Return ONLY valid minified JSON with exactly these string keys: description, objectives, standards, materials, schedule, assessment.
+Return ONLY valid minified JSON with exactly these string keys: description, objectives, methods, standards, materials, schedule, assessment.
 Use "\\n" for line breaks inside a value. No markdown, no commentary, no extra keys.
 
 Course title: ${input.title || "(none)"}
@@ -55,6 +56,7 @@ Extra notes: ${input.notes || "(none)"}`;
     const draft = {
       description: parsed.description || fallback.description,
       objectives: parsed.objectives || fallback.objectives,
+      methods: parsed.methods || fallback.methods,
       standards: parsed.standards || fallback.standards,
       materials: parsed.materials || input.materials || fallback.materials,
       schedule: parsed.schedule || fallback.schedule,

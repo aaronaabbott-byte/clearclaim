@@ -96,8 +96,10 @@ export default function InvoiceBuilder({ userId, provider, savedItems = [], exis
         Fill in who it's for, add your services, and download a clean invoice on your letterhead — ready to upload to ClassWallet.
       </p>
       <p className="finenote" style={{ marginTop: 6, background: "#f4f7fb", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }}>
-        For ClassWallet to accept a direct-pay invoice it must show: your business name, the student's name (for services),
-        a clear description of each item, and itemized prices with a total. The fields below cover all of these.
+        For a ClassWallet ESA/EFA program to accept your invoice it should show: your business name and contact, an
+        invoice number and date, the student's name (for services), an itemized description of each item or service
+        (with service dates where they apply), and a total. For tutoring or therapy, include your credential or license
+        number. This covers Arkansas and Arizona, and other states' programs are similar.
       </p>
 
       <div className="row" style={{ marginTop: 10 }}>
