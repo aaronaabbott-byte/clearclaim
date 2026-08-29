@@ -8,12 +8,18 @@ import ProviderProfileForm from "../provider-profile";
 import CapLogger from "../cap-logger";
 import StatePicker from "@/app/welcome/state-picker";
 import { getStateConfig } from "@/lib/states";
+import { isAdmin } from "@/lib/admin";
+
+const DEMO_EMAIL = "demo@clearclaimapp.com";
 
 export default async function Settings() {
   const supabase = createClient();
   const { user, profile, stateConfig } = await getProfile();
   if (!user) redirect("/login");
   const showCaps = !!(stateConfig?.features?.techCap || stateConfig?.features?.percentCaps);
+  // Changing state swaps the whole rulebook, so regular users can't switch it
+  // themselves — only the demo account and admins can (for demos/support).
+  const canSwitchState = isAdmin(user.email) || (user.email || "").toLowerCase() === DEMO_EMAIL;
   const isParent = profile?.is_parent ?? true;
   const isProvider = profile?.is_provider ?? false;
 
@@ -47,11 +53,13 @@ export default async function Settings() {
 
         <div className="card">
           <h2>Your program</h2>
-          <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
+          <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: canSwitchState ? 12 : 4 }}>
             You're set to <b>{getStateConfig(profile?.state).name} — {getStateConfig(profile?.state).program}</b>.
-            ClearClaim tailors categories, caps, and documentation to this program. Tap a different state to change it.
+            ClearClaim tailors categories, caps, and documentation to this program.
           </p>
-          <StatePicker userId={user.id} current={profile?.state || "AR"} compact />
+          {canSwitchState
+            ? <StatePicker userId={user.id} current={profile?.state || "AR"} compact />
+            : <p className="finenote">Your program is set when you sign up. If you've moved to a different state's program and need it changed, email <a href="mailto:clearclaimhelp@gmail.com" style={{ color: "var(--navy2)" }}>clearclaimhelp@gmail.com</a>.</p>}
         </div>
 
         {/* Business profile only for provider-only accounts. Dual-role (parent +
