@@ -6,6 +6,8 @@ import { KidForm, KidEdit } from "../students";
 import StudentReorder from "../student-reorder";
 import ProviderProfileForm from "../provider-profile";
 import CapLogger from "../cap-logger";
+import StatePicker from "@/app/welcome/state-picker";
+import { getStateConfig } from "@/lib/states";
 
 export default async function Settings() {
   const supabase = createClient();
@@ -40,6 +42,15 @@ export default async function Settings() {
           <p className="finenote" style={{ marginTop: 6 }}>
             Need a role added or removed? Email <a href="mailto:clearclaimhelp@gmail.com" style={{ color: "var(--navy2)" }}>clearclaimhelp@gmail.com</a> and we'll update it for you.
           </p>
+        </div>
+
+        <div className="card">
+          <h2>Your program</h2>
+          <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
+            You're set to <b>{getStateConfig(profile?.state).name} — {getStateConfig(profile?.state).program}</b>.
+            ClearClaim tailors categories, caps, and documentation to this program. Tap a different state to change it.
+          </p>
+          <StatePicker userId={user.id} current={profile?.state || "AR"} compact />
         </div>
 
         {/* Business profile only for provider-only accounts. Dual-role (parent +
