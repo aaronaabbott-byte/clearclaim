@@ -3,14 +3,47 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
-  categoryCap, efaBudgetYear, priorCapSpend } from "@/lib/rules";
+  categoryCap, efaBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
 const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
+const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 import { buildPacketPdfs } from "@/lib/packet";
 
 const DOT = { ok: "var(--teal)", warn: "var(--gold)", fail: "var(--red)" };
 const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
-export default function ClaimBuilder({ kids, userId, claims = [], initialItems = "", initialNote = "", prefill = {}, premium = false }) {
+// File picker that appends (never replaces), offers a phone-camera capture, and
+// lists what's attached with a remove control.
+function FileField({ files, onAdd, onRemove, hint }) {
+  const btn = { fontSize: 13, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", display: "inline-block" };
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+        <label style={btn}>
+          + Add file
+          <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }}
+            onChange={e => { onAdd(e.target.files); e.target.value = ""; }} />
+        </label>
+        <label style={{ ...btn, color: "var(--navy2)", borderColor: "var(--navy2)" }}>
+          📷 Take photo
+          <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+            onChange={e => { onAdd(e.target.files); e.target.value = ""; }} />
+        </label>
+      </div>
+      {files.length > 0 ? (
+        <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+          {files.map((f, i) => (
+            <div key={i} className="sans" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+              <button type="button" onClick={() => onRemove(i)} style={{ color: "var(--red)", borderColor: "#e3b7b3", padding: "1px 7px", fontSize: 12 }}>Remove</button>
+            </div>
+          ))}
+        </div>
+      ) : <div className="muted sans" style={{ fontSize: 12, marginTop: 6 }}>{hint}</div>}
+    </div>
+  );
+}
+
+export default function ClaimBuilder({ kids, userId, claims = [], documents = [], initialItems = "", initialNote = "", prefill = {}, premium = false }) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -26,6 +59,11 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
   const [reasoning, setReasoning] = useState("");
   const [receipts, setReceipts] = useState([]);   // File[]
   const [payments, setPayments] = useState([]);    // File[]
+  const [vaultPicks, setVaultPicks] = useState([]); // document ids to attach
+  const [splitOn, setSplitOn] = useState(false);
+  const [splitIds, setSplitIds] = useState([]);     // kid ids sharing this receipt
+  const [splitMode, setSplitMode] = useState("equal"); // equal | custom
+  const [customAmt, setCustomAmt] = useState({});   // { kidId: "12.34" }
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -79,6 +117,52 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
     ];
   }
 
+  // Append new files (from the picker or the camera) instead of replacing, and
+  // de-dupe on name+size so the same photo isn't added twice.
+  function addFiles(setter, list) {
+    const incoming = Array.from(list || []);
+    setter(prev => {
+      const seen = new Set(prev.map(f => f.name + ":" + f.size));
+      return [...prev, ...incoming.filter(f => !seen.has(f.name + ":" + f.size))];
+    });
+  }
+  const removeAt = (setter, i) => setter(prev => prev.filter((_, idx) => idx !== i));
+
+  // Vault: reusable documents for this student (or family-wide, kid_id null).
+  const vaultDocs = documents.filter(d => !d.kid_id || d.kid_id === kidId);
+  const toggleVault = (id) => setVaultPicks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  // Download the picked vault docs so they can be flattened into the packet.
+  async function vaultImages() {
+    const out = [];
+    for (const id of vaultPicks) {
+      const d = documents.find(x => x.id === id);
+      if (!d?.path) continue;
+      const { data, error } = await supabase.storage.from("documents").download(d.path);
+      if (!error && data) out.push({ kind: d.label || d.kind || "Document", blob: data, name: d.filename || d.label || "document" });
+    }
+    return out;
+  }
+
+  // --- Split reimbursement math ---------------------------------------------
+  // The current student is always part of the split.
+  const splitKids = Array.from(new Set([kidId, ...splitIds]));
+  const totalCents = Math.round((Number(amount) || 0) * 100);
+  const splitShares = (() => {
+    const list = splitKids.map(id => ({ id, name: kids.find(k => k.id === id)?.first_name || "Student" }));
+    if (splitMode === "equal") {
+      const cents = splitEqualCents(totalCents, list.length);
+      return list.map((k, i) => ({ ...k, cents: cents[i], amount: (cents[i] || 0) / 100 }));
+    }
+    return list.map(k => {
+      const c = Math.round((Number(customAmt[k.id]) || 0) * 100);
+      return { ...k, cents: c, amount: c / 100 };
+    });
+  })();
+  const splitSum = splitShares.reduce((s, k) => s + k.cents, 0);
+  const splitBalances = splitSum === totalCents;
+  const myShare = splitShares.find(s => s.id === kidId);
+
   async function improveWithAI() {
     setErr(""); setMsg(""); setAiBusy(true);
     try {
@@ -106,11 +190,44 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
     return total > 1 ? `${base}-file${i + 1}of${total}.pdf` : `${base}.pdf`;
   }
 
+  async function gatherImages() { return [...images(), ...await vaultImages()]; }
+
+  // The claim(s) to produce. One per student when splitting, else just this one.
+  function claimVariants() {
+    const finalReasoning = reasoning || suggested;
+    if (splitOn && splitKids.length > 1) {
+      const note = buildSplitNote(Number(amount) || 0, splitShares.map(s => ({ name: s.name, amount: s.amount })), splitMode);
+      const grp = uuid();
+      return splitShares.map(s => ({
+        kid: kids.find(k => k.id === s.id),
+        claim: {
+          ...claim, kid_id: s.id, amount: s.amount,
+          base_price: (techCat && base_price && totalCents) ? Math.round(base_price * (s.cents / totalCents) * 100) / 100 : null,
+          reasoning: finalReasoning, purpose, split_group: grp, split_note: note,
+        },
+      }));
+    }
+    return [{ kid, claim: { ...claim, kid_id: kidId, amount: +amount, base_price, reasoning: finalReasoning, purpose, split_group: null, split_note: null } }];
+  }
+
+  function packetNameFor(kidName, i, total) {
+    const base = `ClearClaim-${(vendor || "packet").replace(/\W+/g, "-")}-${kidName || ""}-${date || "draft"}`.replace(/-+/g, "-");
+    return total > 1 ? `${base}-file${i + 1}of${total}.pdf` : `${base}.pdf`;
+  }
+
   async function downloadPacket() {
     setErr(""); setMsg("");
-    const docs = await buildPacketPdfs({ ...claim, reasoning: reasoning || suggested }, kid, images());
-    docs.forEach((d, i) => d.save(packetName(i, docs.length)));
-    if (docs.length > 1) setMsg(`Your packet was split into ${docs.length} files so each stays under ClassWallet's page limit. Upload all ${docs.length} to the same submission.`);
+    if (splitOn && splitKids.length > 1 && !splitBalances) { setErr("Fix the split so the amounts add up to the receipt total."); return; }
+    const allImages = await gatherImages();
+    let files = 0;
+    for (const v of claimVariants()) {
+      const docs = await buildPacketPdfs(v.claim, v.kid, allImages);
+      docs.forEach((d, i) => d.save(packetNameFor(v.kid?.first_name, i, docs.length)));
+      files += docs.length;
+    }
+    setMsg(splitOn && splitKids.length > 1
+      ? `Built ${splitKids.length} packets — one per student, each showing the split.`
+      : (files > 1 ? `Your packet was split into ${files} files so each stays under ClassWallet's page limit. Upload all ${files} to the same submission.` : ""));
   }
 
   async function saveAndBuild() {
@@ -119,38 +236,47 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
       if (!kidId) { setErr("Pick a student."); setBusy(false); return; }
       if (!(+amount > 0)) { setErr("Enter an amount."); setBusy(false); return; }
       if (!category) { setErr("Pick a category."); setBusy(false); return; }
+      if (splitOn && splitKids.length > 1 && !splitBalances) { setErr("The split amounts must add up to the receipt total."); setBusy(false); return; }
 
-      const finalReasoning = reasoning || suggested;
-      const { data: row, error } = await supabase.from("claims").insert({
-        user_id: userId, kid_id: kidId, vendor, pathway,
-        amount: +amount, base_price, date: date || null, category, items,
-        purpose, reasoning: finalReasoning,
-        status: blocking ? "draft" : "ready",
-      }).select("id").single();
-      if (error) { setErr("Could not save the claim: " + error.message); setBusy(false); return; }
+      const allImages = await gatherImages();
+      const variants = claimVariants();
+      let totalFiles = 0, storeFail = false;
 
-      // Upload supporting files (best-effort). Failure here shouldn't block the packet.
-      const uploaded = [];
-      for (const im of images()) {
-        const path = `${userId}/${row.id}/${Date.now()}-${im.name}`.replace(/\s+/g, "_");
-        const { error: upErr } = await supabase.storage.from("documents").upload(path, im.blob, { upsert: false });
-        if (!upErr) uploaded.push({ path, kind: im.kind, name: im.name });
+      for (const v of variants) {
+        const { data: row, error } = await supabase.from("claims").insert({
+          user_id: userId, kid_id: v.claim.kid_id, vendor, pathway,
+          amount: v.claim.amount, base_price: v.claim.base_price, date: date || null, category, items,
+          purpose, reasoning: v.claim.reasoning,
+          split_group: v.claim.split_group, split_note: v.claim.split_note,
+          status: blocking ? "draft" : "ready",
+        }).select("id").single();
+        if (error) { setErr("Could not save the claim: " + error.message); setBusy(false); return; }
+
+        // Upload supporting files (best-effort) for this student's claim.
+        const uploaded = [];
+        for (const im of allImages) {
+          const path = `${userId}/${row.id}/${Date.now()}-${im.name}`.replace(/\s+/g, "_");
+          const { error: upErr } = await supabase.storage.from("documents").upload(path, im.blob, { upsert: false });
+          if (!upErr) uploaded.push({ path, kind: im.kind, name: im.name });
+        }
+        if (uploaded.length) await supabase.from("claims").update({ files: uploaded }).eq("id", row.id);
+        if (uploaded.length < allImages.length && allImages.length > 0) storeFail = true;
+
+        const docs = await buildPacketPdfs(v.claim, v.kid, allImages);
+        docs.forEach((d, i) => d.save(packetNameFor(v.kid?.first_name, i, docs.length)));
+        totalFiles += docs.length;
       }
-      if (uploaded.length) await supabase.from("claims").update({ files: uploaded }).eq("id", row.id);
 
-      // Build the packet (split into <=5-page files) and download each.
-      const docs = await buildPacketPdfs({ ...claim, reasoning: finalReasoning }, kid, images());
-      docs.forEach((d, i) => d.save(packetName(i, docs.length)));
-
-      const storeNote = uploaded.length < images().length && images().length > 0
-        ? " (files couldn't be stored — check Storage policies — but the packet downloaded fine)"
+      const storeNote = storeFail ? " (some files couldn't be stored — check Storage policies — but the packets downloaded fine)" : "";
+      const head = variants.length > 1
+        ? `Saved ${variants.length} claims (one per student) and downloaded their packets.`
+        : "Saved and packet downloaded.";
+      const splitNote = variants.length === 1 && totalFiles > 1
+        ? ` Your packet is ${totalFiles} files, each under ClassWallet's page limit — upload all ${totalFiles} to the same submission.`
         : "";
-      const splitNote = docs.length > 1
-        ? ` Your packet is ${docs.length} files, each under ClassWallet's page limit — upload all ${docs.length} to the same submission.`
-        : "";
-      setMsg("Saved and packet downloaded." + splitNote + storeNote);
+      setMsg(head + splitNote + storeNote);
       router.refresh();
-      setTimeout(() => router.push("/dashboard"), 1200);
+      setTimeout(() => router.push("/dashboard"), 1400);
     } catch (e) {
       setErr(e.message || "Something went wrong.");
     }
@@ -228,14 +354,93 @@ export default function ClaimBuilder({ kids, userId, claims = [], initialItems =
         <div className="row" style={{ marginTop: 12 }}>
           <div>
             <label>Receipt (photo, screenshot, or PDF)</label>
-            <input type="file" accept="image/*,application/pdf" multiple onChange={e => setReceipts([...e.target.files])} />
-            <div className="muted sans" style={{ fontSize: 12, marginTop: 4 }}>{receipts.length ? `${receipts.length} file(s)` : "Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you."}</div>
+            <FileField files={receipts} onAdd={list => addFiles(setReceipts, list)} onRemove={i => removeAt(setReceipts, i)}
+              hint="Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you." />
           </div>
           <div>
             <label>Bank / card charge (photo, screenshot, or PDF)</label>
-            <input type="file" accept="image/*,application/pdf" multiple onChange={e => setPayments([...e.target.files])} />
-            <div className="muted sans" style={{ fontSize: 12, marginTop: 4 }}>{payments.length ? `${payments.length} file(s)` : "Single transaction showing amount, date, merchant. Required for PayPal."}</div>
+            <FileField files={payments} onAdd={list => addFiles(setPayments, list)} onRemove={i => removeAt(setPayments, i)}
+              hint="Single transaction showing amount, date, merchant. Required for PayPal." />
           </div>
+        </div>
+      )}
+
+      {/* Attach from your vault: reusable docs (annual pre-approval, diagnosis, etc.) */}
+      {vaultDocs.length > 0 && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+          <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Attach from your vault</div>
+          <p className="finenote" style={{ marginTop: 2, marginBottom: 8 }}>
+            Add saved documents to this packet — like the annual non-vendor pre-approval you re-attach every month.
+            They're flattened into the packet along with your receipt. Manage files in <a href="/dashboard/documents" style={{ color: "var(--navy2)" }}>Documents</a>.
+          </p>
+          <div style={{ display: "grid", gap: 6 }}>
+            {vaultDocs.map(d => (
+              <label key={d.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={vaultPicks.includes(d.id)} onChange={() => toggleVault(d.id)} style={{ width: 16, height: 16 }} />
+                <span><b>{d.label || d.filename || "Document"}</b>{d.kind ? <span className="muted"> · {d.kind}</span> : null}{!d.kid_id ? <span className="muted"> · family</span> : null}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Split reimbursement across funded students */}
+      {kids.length > 1 && pathway !== "directpay" && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+          <label className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontWeight: 700, fontSize: 13, color: "var(--navy)", cursor: "pointer" }}>
+            <input type="checkbox" checked={splitOn} onChange={e => { setSplitOn(e.target.checked); if (e.target.checked && !splitIds.length) setSplitIds([kidId]); }} style={{ width: 16, height: 16 }} />
+            Split this receipt across students
+          </label>
+          <p className="finenote" style={{ marginTop: 4, marginBottom: splitOn ? 10 : 0 }}>
+            Required for one-per-family capped items — a gym membership, a household printer, a co-op fee, a shared garden bed.
+            Each student gets their own submission showing the math, with the same receipt attached.
+          </p>
+          {splitOn && (
+            <>
+              <div className="sans" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Students sharing this receipt</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+                {kids.map(k => {
+                  const on = splitKids.includes(k.id);
+                  const isCurrent = k.id === kidId;
+                  return (
+                    <label key={k.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, cursor: isCurrent ? "default" : "pointer", opacity: isCurrent ? 0.7 : 1 }}>
+                      <input type="checkbox" checked={on} disabled={isCurrent}
+                        onChange={() => setSplitIds(prev => {
+                          const base = new Set(prev.length ? prev : [kidId]);
+                          on ? base.delete(k.id) : base.add(k.id); base.add(kidId);
+                          return Array.from(base);
+                        })} style={{ width: 15, height: 15 }} />
+                      {k.first_name}{isCurrent ? " (this claim)" : ""}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="sans" style={{ display: "flex", gap: 16, fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input type="radio" name="splitmode" checked={splitMode === "equal"} onChange={() => setSplitMode("equal")} /> Equal split
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input type="radio" name="splitmode" checked={splitMode === "custom"} onChange={() => setSplitMode("custom")} /> Custom amounts
+                </label>
+              </div>
+              <div style={{ display: "grid", gap: 5 }}>
+                {splitShares.map(s => (
+                  <div key={s.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <span style={{ flex: 1 }}>{s.name}</span>
+                    {splitMode === "custom"
+                      ? <input value={customAmt[s.id] ?? ""} onChange={e => setCustomAmt(p => ({ ...p, [s.id]: e.target.value }))}
+                          inputMode="decimal" placeholder="0.00" style={{ width: 100, textAlign: "right" }} />
+                      : <span style={{ fontWeight: 700 }}>{money(s.amount)}</span>}
+                  </div>
+                ))}
+              </div>
+              <div className="sans" style={{ fontSize: 12.5, marginTop: 8, color: splitBalances ? "var(--teal)" : "var(--red)", fontWeight: 700 }}>
+                {splitBalances
+                  ? `✓ Splits add up to ${money(amount)}. This claim files ${money(myShare?.amount || 0)} for ${kids.find(k=>k.id===kidId)?.first_name}.`
+                  : `Splits total ${money(splitSum / 100)} — must equal the receipt total ${money(amount)}.`}
+              </div>
+            </>
+          )}
         </div>
       )}
 

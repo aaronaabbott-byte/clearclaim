@@ -23,7 +23,7 @@ export async function POST(request) {
   const prompt =
 `You write the "educational-use justification" a parent submits with an Arkansas EFA education-fund reimbursement.
 Write 2 to 4 short, concrete, first-person sentences explaining how THIS student uses THESE specific items in THEIR classes.
-Rules: be specific and factual; name the items and the course/subject where natural; do NOT write a generic "benefits of X" essay; do not list benefits; no marketing language, no headings, no bullet points. Plain sentences only. Return ONLY the justification text.
+Rules: be specific and factual; name the items and the course/subject where natural; do NOT write a generic "benefits of X" essay; do not list benefits; no marketing language, no headings, no bullet points. Plain sentences only. Do NOT assume the student's gender — never use "he", "she", "him", or "her"; use the student's first name or "the student" instead. Return ONLY the justification text.
 
 Student: ${kid.first_name || "(unnamed)"}${kid.grade ? `, grade ${kid.grade}` : ""}${kid.setting === "homeschool" ? ", homeschooled" : kid.school_name ? `, at ${kid.school_name}` : ""}${kid.subjects ? `. Subjects this year: ${kid.subjects}.` : "."}
 Purchase category: ${claim.category || "(none)"}. Store/vendor: ${claim.vendor || "(unknown)"}. Amount: $${claim.amount || "?"}.

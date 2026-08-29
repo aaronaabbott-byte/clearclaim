@@ -83,6 +83,15 @@ export default function Privacy() {
             documents, and never sold or shared for marketing. ClearClaim is not directed to children, and
             we do not knowingly collect information directly from a child under 13. You can edit or delete
             your students at any time.</p>
+            <p style={{ marginTop: 8 }}><b>Health and diagnosis documents.</b> Some expenses — like sensory or
+            special-needs learning items — require a copy of a student's medical diagnosis. ClearClaim gives you
+            an optional document vault so you can store such a file once and attach it to your submissions instead
+            of re-uploading it each time. Uploading these documents is entirely your choice. When you do, they are
+            stored privately under your account with the same protections as your other files: isolated by
+            per-account access rules, encrypted in transit and at rest, and served only through private,
+            time-limited links. We do not read, use, sell, or share these documents, and we use them only to
+            provide the storage-and-attach feature you asked for. You can delete any stored document at any time,
+            and we recommend uploading only what a submission actually needs.</p>
 
             <H>8. How your information is protected</H>
             <p>Your data is isolated to your account by per-account access rules (row-level security), so

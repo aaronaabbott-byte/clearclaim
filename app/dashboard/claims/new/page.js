@@ -13,7 +13,8 @@ export default async function NewClaim({ searchParams }) {
   const { data: kids } = await supabase.from("kids").select("*")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
-  const { data: claims } = await supabase.from("claims").select("id,kid_id,category,amount,date,created_at");
+  const { data: claims } = await supabase.from("claims").select("id,kid_id,category,amount,base_price,date,created_at");
+  const { data: documents } = await supabase.from("documents").select("id,kid_id,label,kind,path,filename").order("created_at", { ascending: false });
   const initialItems = (searchParams?.items || "").toString();
   const initialNote = (searchParams?.note || "").toString();
   const prefill = {
@@ -31,7 +32,7 @@ export default async function NewClaim({ searchParams }) {
         <Link href="/dashboard"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Dashboard</button></Link>
       </header>
       <main>
-        <ClaimBuilder kids={kids || []} userId={user.id} claims={claims || []}
+        <ClaimBuilder kids={kids || []} userId={user.id} claims={claims || []} documents={documents || []}
           initialItems={initialItems} initialNote={initialNote} prefill={prefill} premium={premium} />
       </main>
     </>

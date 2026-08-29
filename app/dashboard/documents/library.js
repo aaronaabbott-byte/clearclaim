@@ -3,12 +3,14 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const KINDS = ["booklist", "supply", "receipt", "annotated", "other"];
+const KINDS = ["booklist", "supply", "preapproval", "diagnosis", "receipt", "annotated", "other"];
+const KIND_LABEL = { preapproval: "Pre-approval (annual)", diagnosis: "Medical diagnosis" };
 
 export default function DocumentLibrary({ userId, kids, documents }) {
   const router = useRouter();
   const supabase = createClient();
   const fileRef = useRef(null);
+  const camRef = useRef(null);
   const [label, setLabel] = useState("");
   const [kind, setKind] = useState("booklist");
   const [kidId, setKidId] = useState("");
@@ -32,8 +34,8 @@ export default function DocumentLibrary({ userId, kids, documents }) {
   async function upload(e) {
     e.preventDefault();
     setErr(""); setMsg("");
-    const file = fileRef.current?.files?.[0];
-    if (!file) { setErr("Choose a file first."); return; }
+    const file = fileRef.current?.files?.[0] || camRef.current?.files?.[0];
+    if (!file) { setErr("Choose a file or take a photo first."); return; }
     setBusy(true);
     try {
       const safe = file.name.replace(/[^\w.\-]+/g, "_");
@@ -44,7 +46,7 @@ export default function DocumentLibrary({ userId, kids, documents }) {
         user_id: userId, kid_id: kidId || null, label: label || file.name, kind, path, filename: file.name,
       });
       if (error) { setErr("Saved the file but couldn't record it: " + error.message); setBusy(false); return; }
-      setLabel(""); if (fileRef.current) fileRef.current.value = "";
+      setLabel(""); if (fileRef.current) fileRef.current.value = ""; if (camRef.current) camRef.current.value = "";
       setMsg("Uploaded.");
       router.refresh();
     } catch (e2) { setErr(e2.message || "Something went wrong."); }
@@ -70,17 +72,24 @@ export default function DocumentLibrary({ userId, kids, documents }) {
       <div className="card">
         <h2>Add a document</h2>
         <p className="muted sans" style={{ fontSize: 14, marginTop: -4 }}>
-          Upload booklists, supply lists, enrollment letters, or any supporting proof. Files are private to your account.
+          Upload booklists, supply lists, enrollment letters, an annual pre-approval, a medical diagnosis, or any supporting proof —
+          then attach them to a claim without re-uploading. Files are private to your account, encrypted at rest, and only you can see them.
+          Only upload health documents you're comfortable storing, and just what a submission needs.
         </p>
         <form onSubmit={upload}>
           <div className="row">
-            <div><label>File</label><input ref={fileRef} type="file" accept="image/*,application/pdf" /></div>
+            <div><label>File</label><input ref={fileRef} type="file" accept="image/*,application/pdf" />
+              <label className="sans" style={{ display: "inline-block", marginTop: 6, fontSize: 13, padding: "7px 12px", borderRadius: 10, border: "1px solid var(--navy2)", color: "var(--navy2)", cursor: "pointer" }}>
+                📷 Take photo instead
+                <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={() => { if (fileRef.current) fileRef.current.value = ""; }} />
+              </label>
+            </div>
             <div><label>Label</label><input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. 5th-grade booklist" /></div>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             <div><label>Type</label>
               <select value={kind} onChange={e => setKind(e.target.value)}>
-                {KINDS.map(k => <option key={k} value={k}>{k[0].toUpperCase() + k.slice(1)}</option>)}
+                {KINDS.map(k => <option key={k} value={k}>{KIND_LABEL[k] || (k[0].toUpperCase() + k.slice(1))}</option>)}
               </select>
             </div>
             <div><label>Student (optional)</label>
