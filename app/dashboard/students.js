@@ -33,7 +33,7 @@ function AwardField({ value }) {
 
 // Add-a-student form (blank). `showAward` reveals the award field for states
 // where the scholarship varies per student (e.g. Utah, Arizona disability).
-export function KidForm({ first = true, showAward = false }) {
+export function KidForm({ first = true, showAward = false, showTier = true }) {
   return (
     <form action={addKid}>
       <div className="row">
@@ -53,7 +53,7 @@ export function KidForm({ first = true, showAward = false }) {
         <p className="finenote" style={{ marginTop: 4 }}>Devices and the year only. Used to strengthen technology requests and avoid duplication. Do not enter any health or medical information.</p>
       </div>
       {showAward && <AwardField />}
-      <TierToggle />
+      {showTier && <TierToggle />}
       <button className="primary" style={{ marginTop: 14 }}>{first ? "Add your first student" : "Add student"}</button>
     </form>
   );
@@ -61,7 +61,7 @@ export function KidForm({ first = true, showAward = false }) {
 
 // Inline editable student card. `bare` drops the outer box so it can be nested
 // inside a per-student card that also holds the cap tracker.
-export function KidEdit({ k, bare = false, showAward = false }) {
+export function KidEdit({ k, bare = false, showAward = false, showTier = true }) {
   const inner = (
     <>
       <form action={updateKid}>
@@ -83,7 +83,7 @@ export function KidEdit({ k, bare = false, showAward = false }) {
           <p className="finenote" style={{ marginTop: 4 }}>Devices and the year only. Used to strengthen technology requests and avoid duplication. Do not enter any health or medical information.</p>
         </div>
         {showAward && <AwardField value={k.award_amount} />}
-        <TierToggle value={k.funding_tier} />
+        {showTier && <TierToggle value={k.funding_tier} />}
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <button className="primary">Save changes</button>
         </div>

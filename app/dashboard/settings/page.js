@@ -18,6 +18,7 @@ export default async function Settings() {
   if (!user) redirect("/login");
   const showCaps = !!(stateConfig?.features?.techCap || stateConfig?.features?.percentCaps);
   const showAward = !!stateConfig?.features?.perStudentAward;
+  const showTier = !!stateConfig?.features?.fundingTiers;
   // Changing state swaps the whole rulebook, so regular users can't switch it
   // themselves — only the demo account and admins can (for demos/support).
   const canSwitchState = isAdmin(user.email) || (user.email || "").toLowerCase() === DEMO_EMAIL;
@@ -92,7 +93,7 @@ export default async function Settings() {
                 <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", margin: "0 0 8px" }}>Add a student</h3>
                 {/* key on the student count remounts the form after each add, so the
                     fields clear instead of carrying the last student's values over. */}
-                <KidForm key={kids?.length ?? 0} first={!hasKids} showAward={showAward} />
+                <KidForm key={kids?.length ?? 0} first={!hasKids} showAward={showAward} showTier={showTier} />
               </div>
             </div>
 
@@ -112,7 +113,7 @@ export default async function Settings() {
                       <div className="sans" style={{ fontWeight: 700, fontSize: 15, color: "var(--navy)", marginBottom: 10 }}>
                         {k.first_name}{k.grade ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · grade {k.grade}</span> : null}
                       </div>
-                      <KidEdit k={k} bare showAward={showAward} />
+                      <KidEdit k={k} bare showAward={showAward} showTier={showTier} />
                       {showCaps && (
                         <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
                           <CapLogger kid={k} entries={entriesFor(k.id)} bare />

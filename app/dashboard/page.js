@@ -71,7 +71,7 @@ export default async function Dashboard() {
               Add each child once. We only ask for what's needed to build and justify a claim —
               nothing sensitive, no account or bank numbers. You can edit or add more anytime in Settings.
             </p>
-            <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "left" }}><KidForm first showAward={!!feat.perStudentAward} /></div>
+            <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "left" }}><KidForm first showAward={!!feat.perStudentAward} showTier={!!feat.fundingTiers} /></div>
             <p className="finenote" style={{ maxWidth: 560, margin: "18px auto 0" }}>
               One quick note: ClearClaim is an independent helper, not part of ClassWallet, the Arkansas
               Department of Education, or any EFA or ESA program. We help you prepare strong submissions,
