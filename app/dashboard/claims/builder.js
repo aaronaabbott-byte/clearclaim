@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
   categoryCap, efaBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
 import { checkClaimAZ } from "@/lib/states/az-rules";
+import { checkClaimUT } from "@/lib/states/ut-rules";
+const STATE_CHECKERS = { AZ: checkClaimAZ, UT: checkClaimUT };
 const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
 const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 import { buildPacketPdfs } from "@/lib/packet";
@@ -52,7 +54,7 @@ export default function ClaimBuilder({
   pathwayFields = PATHWAY_FIELDS,
   features = { splitReimbursement: true, techCap: true, percentCaps: true },
 }) {
-  const runCheck = state === "AZ" ? checkClaimAZ : checkClaim;
+  const runCheck = STATE_CHECKERS[state] || checkClaim;
   const showCaps = !!(features.techCap || features.percentCaps);
   const router = useRouter();
   const supabase = createClient();
