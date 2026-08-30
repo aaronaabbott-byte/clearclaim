@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "ClearClaim — EFA reimbursements, ready to approve",
+  title: "ClearClaim — ESA & EFA reimbursements, ready to approve",
   description:
-    "Prepare Arkansas EFA reimbursements the right way: check eligibility before you buy, keep receipts sorted by student, build a clean ClassWallet-ready packet, and handle pre-approvals. Works alongside ClassWallet.",
+    "Prepare education-savings-account reimbursements the right way for Arkansas EFA, Arizona ESA, and Utah Fits All: check eligibility before you buy, keep receipts sorted by student, build a clean submission packet, and handle pre-approvals. Works alongside ClassWallet or Odyssey.",
 };
 
 // The app lives on its own subdomain; the landing links to it. Set
@@ -109,12 +109,13 @@ export default function Landing() {
       <section className="lp-hero">
         <div className="lp-wrap lp-hero-grid">
           <div>
-            <span className="lp-eyebrow">Arkansas EFA</span>
+            <span className="lp-eyebrow">Arkansas · Arizona · Utah</span>
             <h1 className="lp-h1">Every claim, ready to approve.</h1>
             <p className="lp-lead">
-              ClearClaim helps Education Freedom Account families get reimbursements right the first time — check
-              whether an item qualifies before you buy, keep every receipt sorted by student, and hand ClassWallet a
-              packet that has everything a reviewer is looking for.
+              ClearClaim helps education-savings-account families get reimbursements right the first time — check
+              whether an item qualifies before you buy, keep every receipt sorted by student, and hand your program
+              a packet that has everything a reviewer is looking for. Built for Arkansas EFA, Arizona ESA, and Utah
+              Fits All, with more states on the way.
             </p>
             <div className="lp-ctas">
               <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`}>Get started free</a>
@@ -122,7 +123,7 @@ export default function Landing() {
             </div>
             <p className="lp-trust">
               <IconLock />
-              <span>Start free — upgrade for AI and unlimited students. Works alongside ClassWallet — we never touch your money.</span>
+              <span>Start free — upgrade for AI and unlimited students. Works alongside your program (ClassWallet or Odyssey) — we never touch your money.</span>
             </p>
           </div>
 
@@ -188,7 +189,7 @@ export default function Landing() {
             <p className="lp-kicker">Who it&rsquo;s for</p>
             <h2 className="lp-h2">Built for the way you actually run things</h2>
             <p className="lp-lead">
-              Whether you teach your own kids, run a small learning community, or provide a service to EFA families.
+              Whether you teach your own kids, run a small learning community, or provide a service to ESA and EFA families.
             </p>
           </div>
           <div className="lp-grid lp-grid-3">
@@ -215,30 +216,30 @@ export default function Landing() {
             <p className="lp-kicker">What you get</p>
             <h2 className="lp-h2">Everything around the reimbursement, in one place</h2>
             <p className="lp-lead">
-              ClassWallet moves the money. ClearClaim gets you ready to submit — and keeps you organized all year.
+              Your program moves the money. ClearClaim gets you ready to submit — and keeps you organized all year.
             </p>
           </div>
           <div className="lp-grid lp-grid-3">
             <Card icon={<IconCheckShield />} title="Eligibility check">
-              Find out whether an item is core or non-core before you spend, grounded in the actual EFA rule text.
+              Find out whether an item qualifies before you spend, grounded in your state&rsquo;s actual program rules.
             </Card>
             <Card icon={<IconReceipt />} title="Receipt vault">
               Drop receipts in as they arrive, sorted by student, each with a status so you always know what&rsquo;s
               been claimed.
             </Card>
             <Card icon={<IconPacket />} title="Claim packager">
-              Receipt, proof of payment, and an auto-drafted educational-use note — downloaded as one ClassWallet-ready
+              Receipt, proof of payment, and an auto-drafted educational-use note — downloaded as one submission-ready
               PDF.
             </Card>
             <Card icon={<IconForm />} title="Pre-approval help">
-              Fill the Department&rsquo;s pre-approval form the right way, with a justification that covers the full
-              standard.
+              Handle your program&rsquo;s pre-approval or eligibility request the right way, with a justification that
+              covers the full standard.
             </Card>
             <Card icon={<IconLetterhead />} title="Branded documents">
               Providers create course documents and invoices on their own letterhead — logo, credentials, and contact.
             </Card>
             <Card gold icon={<IconChat />} title="Ask Ann">
-              A plain-language helper for your EFA questions, any time — no jargon, no waiting on hold.
+              A plain-language helper for your ESA/EFA questions, any time — no jargon, no waiting on hold.
             </Card>
           </div>
         </div>
@@ -250,15 +251,15 @@ export default function Landing() {
           <div className="lp-strip">
             <div className="lp-strip-grid">
               <div>
-                <p className="lp-kicker" style={{ color: "#e6bb6a" }}>Alongside ClassWallet</p>
+                <p className="lp-kicker" style={{ color: "#e6bb6a" }}>Alongside your program</p>
                 <h2 className="lp-h2">We don&rsquo;t replace anything. We get you ready.</h2>
                 <p className="lp-lead">
-                  You keep using ClassWallet exactly as you do today. ClearClaim is the preparation step in front of
-                  it — so what you submit is complete the first time.
+                  You keep using your program&rsquo;s platform — ClassWallet or Odyssey — exactly as you do today.
+                  ClearClaim is the preparation step in front of it, so what you submit is complete the first time.
                 </p>
               </div>
               <div>
-                <Lane k="ClassWallet">Holds your EFA funds, receives the submission, and pays the reimbursement.</Lane>
+                <Lane k="Your program">Holds your ESA/EFA funds, receives the submission, and pays the reimbursement.</Lane>
                 <Lane k="ClearClaim">Checks eligibility, keeps the receipts, and builds the packet you submit.</Lane>
                 <Lane k="Never us">Your money, your account numbers, and the submit button. Those stay with you.</Lane>
               </div>
@@ -284,7 +285,7 @@ export default function Landing() {
               qualifies.
             </Step>
             <Step n="3" title="Build the packet and submit">
-              One clean PDF with everything a reviewer needs. You submit it in ClassWallet — we never do that for you.
+              One clean PDF with everything a reviewer needs. You submit it in your program&rsquo;s portal — we never do that for you.
             </Step>
           </div>
         </div>
@@ -308,7 +309,7 @@ export default function Landing() {
                 <span style={{ fontFamily: "var(--serif)", fontSize: 30, fontWeight: 700, color: "var(--lp-navy)" }}>$0</span>
                 <span style={{ color: "var(--lp-navy-2)", fontSize: 14 }}> · always free</span>
               </div>
-              <PlanList items={["1 student", "Receipt vault — up to 10 receipts", "Eligibility check", "Claim builder + ClassWallet packets", "Document library"]} />
+              <PlanList items={["1 student", "Receipt vault — up to 10 receipts", "Eligibility check", "Claim builder + submission packets", "Document library"]} />
               <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`} style={{ width: "100%", justifyContent: "center", marginTop: 4 }}>Start free</a>
             </div>
             <div className="lp-card" style={{ borderColor: "var(--lp-gold)", borderWidth: 2 }}>
@@ -345,7 +346,7 @@ export default function Landing() {
             <a className="lp-btn lp-btn-gold lp-btn-lg" href={`${APP}/login`}>Create your free account</a>
             <a className="lp-btn lp-btn-light lp-btn-lg" href={`${APP}/login`}>Log in</a>
           </div>
-          <p className="lp-final-note">Built with Arkansas EFA families, for Arkansas EFA families.</p>
+          <p className="lp-final-note">Built in Northwest Arkansas with the families who use it — now serving Arkansas, Arizona, and Utah.</p>
         </div>
       </section>
 
@@ -365,9 +366,9 @@ export default function Landing() {
             <span>Designed and built in Northwest Arkansas, alongside the families who use it.</span>
           </p>
           <p className="lp-disc">
-            ClearClaim is an independent tool and is not affiliated with, endorsed by, or connected to ClassWallet, the
-            Arkansas Department of Education, or any state EFA or ESA program. It does not guarantee approval or
-            reimbursement and is not legal, tax, or financial advice.
+            ClearClaim is an independent tool and is not affiliated with, endorsed by, or connected to ClassWallet,
+            Odyssey, any state department of education, or any state EFA or ESA program. It does not guarantee approval
+            or reimbursement and is not legal, tax, or financial advice.
           </p>
           <p className="lp-foot-legal">© {new Date().getFullYear()} ClearClaim</p>
         </div>
