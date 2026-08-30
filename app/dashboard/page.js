@@ -13,6 +13,7 @@ import ClaimOutcome from "./claim-outcome";
 import PreapprovalStatus from "./preapproval-status";
 import UpgradeBanner from "./upgrade-banner";
 import DemoReset from "./demo-reset";
+import CapLogger from "./cap-logger";
 
 const DEMO_EMAIL = "demo@clearclaimapp.com";
 
@@ -306,14 +307,15 @@ export default async function Dashboard() {
 
         {showCaps && (
         <div className="card">
-          <h2>Budget this year <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· {BY.label}</span></h2>
+          <h2>Budget &amp; tracking <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· {BY.label}</span></h2>
           <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
-            Capped categories, per student. Adds up claims and any marketplace/approved spend you've logged, dated Jul–Jun. Technology counts base price (before tax &amp; shipping).
+            Capped categories per student, and where you log marketplace or approved spend that feeds them. Adds up claims plus
+            anything you log, dated Jul–Jun. Technology counts base price (before tax &amp; shipping).
           </p>
           {kids.map(k => {
             const caps = annualCaps(k.funding_tier);
             return (
-            <div key={k.id} style={{ marginBottom: 14 }}>
+            <div key={k.id} className="kid" style={{ display: "block", padding: "14px 16px", marginBottom: 14 }}>
               <div className="sans" style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
                 {k.first_name}
                 <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · {k.funding_tier === "succeed" ? "Succeed" : "Standard"} funding</span>
@@ -338,6 +340,9 @@ export default async function Dashboard() {
                   </div>
                 );
               })}
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                <CapLogger kid={k} entries={(capEntries || []).filter(e => e.kid_id === k.id)} bare />
+              </div>
             </div>
           );})}
         </div>

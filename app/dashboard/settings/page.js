@@ -5,7 +5,6 @@ import { getProfile } from "@/lib/profile";
 import { KidForm, KidEdit } from "../students";
 import StudentReorder from "../student-reorder";
 import ProviderProfileForm from "../provider-profile";
-import CapLogger from "../cap-logger";
 import StatePicker from "@/app/welcome/state-picker";
 import { getStateConfig } from "@/lib/states";
 import { isAdmin } from "@/lib/admin";
@@ -29,10 +28,6 @@ export default async function Settings() {
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
   const hasKids = kids && kids.length > 0;
-
-  const { data: capEntries } = await supabase.from("cap_entries")
-    .select("*").order("created_at", { ascending: false });
-  const entriesFor = (kidId) => (capEntries || []).filter(e => e.kid_id === kidId);
 
   return (
     <>
@@ -101,11 +96,9 @@ export default async function Settings() {
                 together, so everything for a student lives in one place. */}
             {hasKids && (
               <div className="card">
-                <h2>{showCaps ? "Student details & tracking" : "Student details"}</h2>
+                <h2>Student details</h2>
                 <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
-                  {showCaps
-                    ? "Edit a student and log any marketplace / approved spend for them in the same place. Logged spend counts toward the caps on your dashboard."
-                    : "Edit each student's details."}
+                  Edit each student's details. {showCaps ? "Budget and marketplace/approved-spend tracking live on your dashboard." : ""}
                 </p>
                 <div style={{ display: "grid", gap: 14 }}>
                   {kids.map(k => (
@@ -114,11 +107,6 @@ export default async function Settings() {
                         {k.first_name}{k.grade ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · grade {k.grade}</span> : null}
                       </div>
                       <KidEdit k={k} bare showAward={showAward} showTier={showTier} />
-                      {showCaps && (
-                        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
-                          <CapLogger kid={k} entries={entriesFor(k.id)} bare />
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

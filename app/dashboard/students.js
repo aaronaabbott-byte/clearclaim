@@ -105,7 +105,20 @@ export function Bar({ email, settings = true, admin = false, providerView = fals
   const items = [];
   if (providerView) items.push({ label: "Provider view", href: "/provider" });
   if (parentView) items.push({ label: "Parent view", href: "/dashboard" });
-  if (settings) items.push({ label: "Settings", href: "/dashboard/settings" });
+  // Full navigation to the main parent-side destinations (hidden on the provider
+  // view, where `parentView` is set).
+  if (!parentView) {
+    items.push(
+      { label: "Dashboard", href: "/dashboard" },
+      { label: "Start a claim", href: "/dashboard/claims/new" },
+      { label: "Check eligibility", href: "/dashboard/eligibility" },
+      { label: "Documents", href: "/dashboard/documents" },
+      { label: "Pre-approvals", href: "/dashboard/preapproval/new" },
+      { label: "How to submit", href: "/dashboard/submit-steps" },
+      { label: "Students & budget", href: "/dashboard/settings" },
+    );
+  }
+  if (settings && parentView) items.push({ label: "Settings", href: "/dashboard/settings" });
   items.push({ label: "Plans & billing", href: "/upgrade" });
   if (admin) items.push({ label: "Admin", href: "/admin" });
   return (
