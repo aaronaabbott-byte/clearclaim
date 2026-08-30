@@ -3,9 +3,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
-  categoryCap, efaBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
+  categoryCap, efaBudgetYear, inBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
 import { checkClaimAZ } from "@/lib/states/az-rules";
-import { checkClaimUT } from "@/lib/states/ut-rules";
+import { checkClaimUT, utCaps, utCategoryCapKey } from "@/lib/states/ut-rules";
 const STATE_CHECKERS = { AZ: checkClaimAZ, UT: checkClaimUT };
 const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
 const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -104,6 +104,14 @@ export default function ClaimBuilder({
   const capAmt = techCat && base_price ? base_price : amt;
   const projected = prior + capAmt;
   const overBy = cap ? projected - cap.amount : 0;
+
+  // Utah caps: a percentage of the student's award (transportation is flat $750).
+  const utKey = state === "UT" ? utCategoryCapKey(category) : null;
+  const utCap = utKey ? utCaps(Number(kid?.award_amount) || 0).find(c => c.key === utKey) : null;
+  const utPrior = utCap ? (claims || [])
+    .filter(c => c.kid_id === kidId && utCategoryCapKey(c.category) === utKey && inBudgetYear(c, by))
+    .reduce((s, c) => s + (Number(c.amount) || 0), 0) : 0;
+  const utProjected = utPrior + amt;
 
   const checks = useMemo(() => {
     const base = runCheck(claim);
@@ -510,6 +518,31 @@ export default function ClaimBuilder({
               : ` · ${money(cap.amount - projected)} left.`}
           </div>
         </div>
+      )}
+
+      {/* Utah cap running budget (percentage of the student's award) */}
+      {utCap && utCap.amount > 0 && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px",
+          background: utProjected > utCap.amount ? "#fbeeee" : "#f4f8f6" }}>
+          <div className="sans" style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+            <b style={{ color: "var(--navy)" }}>{utCap.label} cap</b>
+            <span className="muted">{utKey === "transportation" ? "$750/year" : "20% of award"}</span>
+            <span className="spacer" style={{ flex: 1 }} />
+            <span style={{ fontWeight: 700, color: utProjected > utCap.amount ? "var(--red)" : "var(--teal)" }}>
+              {money(utProjected)} / {money(utCap.amount)}
+            </span>
+          </div>
+          <div style={{ height: 10, background: "#e7ecf1", borderRadius: 6, overflow: "hidden", margin: "8px 0 6px" }}>
+            <div style={{ width: `${Math.min(100, (utProjected / utCap.amount) * 100)}%`, height: "100%", background: utProjected > utCap.amount ? "var(--red)" : "var(--navy2)" }} />
+          </div>
+          <div className="muted sans" style={{ fontSize: 12.5 }}>
+            {money(utPrior)} already used this year · this claim {money(amt)}
+            {utProjected > utCap.amount ? ` · over by ${money(utProjected - utCap.amount)}.` : ` · ${money(utCap.amount - utProjected)} left.`}
+          </div>
+        </div>
+      )}
+      {utKey && (!utCap || utCap.amount === 0) && utKey !== "transportation" && (
+        <p className="finenote" style={{ marginTop: 8 }}>Set this student's award amount in Settings to track the 20% {utKey === "physicalEd" ? "physical-education" : "extracurricular"} cap.</p>
       )}
 
       {/* Live rules check */}

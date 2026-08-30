@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { SETTINGS, categoryCap, efaBudgetYear, inBudgetYear, annualCaps, capContribution, sumCapEntries } from "@/lib/rules";
+import { utCaps, utCategoryCapKey } from "@/lib/states/ut-rules";
 import { isAdmin } from "@/lib/admin";
 import { getProfile } from "@/lib/profile";
 import { schoolYearLabel } from "@/lib/compliance";
@@ -70,7 +71,7 @@ export default async function Dashboard() {
               Add each child once. We only ask for what's needed to build and justify a claim —
               nothing sensitive, no account or bank numbers. You can edit or add more anytime in Settings.
             </p>
-            <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "left" }}><KidForm first /></div>
+            <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "left" }}><KidForm first showAward={!!feat.perStudentAward} /></div>
             <p className="finenote" style={{ maxWidth: 560, margin: "18px auto 0" }}>
               One quick note: ClearClaim is an independent helper, not part of ClassWallet, the Arkansas
               Department of Education, or any EFA or ESA program. We help you prepare strong submissions,
@@ -244,6 +245,47 @@ export default async function Dashboard() {
         {feat.coCurricularChecklist && <CocurricularGuide />}
 
         {hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
+
+        {stateConfig?.code === "UT" && (
+          <div className="card">
+            <h2>Budget this year <span className="muted sans" style={{ fontSize: 13, fontWeight: 400 }}>· Utah caps · {BY.label}</span></h2>
+            <p className="muted sans" style={{ fontSize: 13, marginTop: -4, marginBottom: 12 }}>
+              Utah caps extracurricular and PE at 20% of each student's award, and transportation at $750/year.
+              Set a student's award in <Link href="/dashboard/settings" style={{ color: "var(--navy2)" }}>Settings</Link> to track these.
+            </p>
+            {kids.map(k => {
+              const award = Number(k.award_amount) || 0;
+              const utUsed = (key) => (claims || [])
+                .filter(c => c.kid_id === k.id && utCategoryCapKey(c.category) === key && inBudgetYear(c, BY))
+                .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+              return (
+                <div key={k.id} style={{ marginBottom: 14 }}>
+                  <div className="sans" style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+                    {k.first_name}
+                    <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · award {award ? money(award) : "not set"}</span>
+                  </div>
+                  {award > 0 ? utCaps(award).map(cap => {
+                    const u = utUsed(cap.key);
+                    const pct = cap.amount ? Math.min(100, (u / cap.amount) * 100) : 0;
+                    const over = u > cap.amount;
+                    return (
+                      <div key={cap.key} style={{ marginBottom: 8 }}>
+                        <div className="sans" style={{ display: "flex", fontSize: 12.5, marginBottom: 3 }}>
+                          <span className="muted">{cap.label}</span>
+                          <span style={{ flex: 1 }} />
+                          <span style={{ fontWeight: 700, color: over ? "var(--red)" : "var(--muted)" }}>{money(u)} / {money(cap.amount)}</span>
+                        </div>
+                        <div style={{ height: 8, background: "#eef2f7", borderRadius: 5, overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: over ? "var(--red)" : "var(--navy2)" }} />
+                        </div>
+                      </div>
+                    );
+                  }) : <p className="finenote">Add {k.first_name}'s award in Settings to see the 20% / 20% / $750 caps.</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {feat.quarterlyDeadlines && (
           <div className="card">

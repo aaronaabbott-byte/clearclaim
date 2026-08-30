@@ -26,6 +26,7 @@ export async function addKid(formData) {
     funding_tier: formData.get("funding_tier") || "standard",
     program_start_year: parseInt(formData.get("program_start_year"), 10) || null,
     prior_tech: (formData.get("prior_tech") || "").trim() || null,
+    award_amount: Number(formData.get("award_amount")) || null,
   });
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");

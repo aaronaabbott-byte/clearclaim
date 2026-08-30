@@ -20,8 +20,20 @@ export function TierToggle({ value }) {
   );
 }
 
-// Add-a-student form (blank).
-export function KidForm({ first = true }) {
+// Optional per-student scholarship award (states where the award varies).
+function AwardField({ value }) {
+  return (
+    <div style={{ marginTop: 8 }}>
+      <label>Scholarship award (optional)</label>
+      <input name="award_amount" inputMode="decimal" defaultValue={value ?? ""} placeholder="e.g. 8000" />
+      <p className="finenote" style={{ marginTop: 4 }}>This student's annual scholarship amount. Used to track the percentage-of-award caps on your dashboard.</p>
+    </div>
+  );
+}
+
+// Add-a-student form (blank). `showAward` reveals the award field for states
+// where the scholarship varies per student (e.g. Utah, Arizona disability).
+export function KidForm({ first = true, showAward = false }) {
   return (
     <form action={addKid}>
       <div className="row">
@@ -40,6 +52,7 @@ export function KidForm({ first = true }) {
         <input name="prior_tech" placeholder="e.g. tablet (2025); printer (2025)" />
         <p className="finenote" style={{ marginTop: 4 }}>Devices and the year only. Used to strengthen technology requests and avoid duplication. Do not enter any health or medical information.</p>
       </div>
+      {showAward && <AwardField />}
       <TierToggle />
       <button className="primary" style={{ marginTop: 14 }}>{first ? "Add your first student" : "Add student"}</button>
     </form>
@@ -48,7 +61,7 @@ export function KidForm({ first = true }) {
 
 // Inline editable student card. `bare` drops the outer box so it can be nested
 // inside a per-student card that also holds the cap tracker.
-export function KidEdit({ k, bare = false }) {
+export function KidEdit({ k, bare = false, showAward = false }) {
   const inner = (
     <>
       <form action={updateKid}>
@@ -69,6 +82,7 @@ export function KidEdit({ k, bare = false }) {
           <input name="prior_tech" defaultValue={k.prior_tech || ""} placeholder="e.g. tablet (2025); printer (2025)" />
           <p className="finenote" style={{ marginTop: 4 }}>Devices and the year only. Used to strengthen technology requests and avoid duplication. Do not enter any health or medical information.</p>
         </div>
+        {showAward && <AwardField value={k.award_amount} />}
         <TierToggle value={k.funding_tier} />
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <button className="primary">Save changes</button>
