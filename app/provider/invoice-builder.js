@@ -89,6 +89,15 @@ export default function InvoiceBuilder({ userId, provider, savedItems = [], exis
     setBusy(false);
   }
 
+  async function remove() {
+    if (!editing) return;
+    if (!window.confirm("Delete this invoice? This can't be undone.")) return;
+    setBusy(true);
+    const { error } = await supabase.from("invoices").delete().eq("id", existing.id);
+    if (error) { setErr("Could not delete: " + error.message); setBusy(false); return; }
+    router.push("/provider"); router.refresh();
+  }
+
   return (
     <div className="card">
       <h2>{editing ? "Edit invoice" : "New invoice"}</h2>
@@ -168,6 +177,7 @@ export default function InvoiceBuilder({ userId, provider, savedItems = [], exis
       <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
         <button className="primary" disabled={busy} onClick={saveAndDownload}>{busy ? "Working…" : "Save & download PDF"}</button>
         <button type="button" onClick={download}>Download PDF only</button>
+        {editing && <button type="button" disabled={busy} onClick={remove} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>}
         <button type="button" onClick={() => router.push("/provider")} style={{ marginLeft: "auto" }}>Cancel</button>
       </div>
     </div>

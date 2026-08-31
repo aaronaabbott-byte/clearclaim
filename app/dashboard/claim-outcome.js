@@ -22,14 +22,29 @@ export default function ClaimOutcome({ claim }) {
     setBusy(false); setOpen(false); router.refresh();
   }
 
+  async function remove() {
+    if (!window.confirm("Delete this claim? This can't be undone.")) return;
+    setBusy(true);
+    try {
+      const paths = (Array.isArray(claim.files) ? claim.files : []).map(f => f?.path).filter(Boolean);
+      if (paths.length) await supabase.storage.from("documents").remove(paths);
+    } catch { /* file cleanup is best-effort */ }
+    await supabase.from("claims").delete().eq("id", claim.id);
+    setBusy(false); router.refresh();
+  }
+
   const badge = claim.outcome === "approved" ? ["Approved", "var(--teal)"]
     : claim.outcome === "denied" ? ["Denied", "var(--red)"] : null;
 
   if (!open) {
     return (
-      <button type="button" className="sans" onClick={() => setOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>
-        {badge ? `${badge[0]} · edit` : "Report outcome"}
-      </button>
+      <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+        <button type="button" className="sans" onClick={() => setOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>
+          {badge ? `${badge[0]} · edit` : "Report outcome"}
+        </button>
+        <button type="button" className="sans" disabled={busy} onClick={remove} title="Delete claim"
+          style={{ fontSize: 12, padding: "4px 9px", color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
+      </span>
     );
   }
   return (
