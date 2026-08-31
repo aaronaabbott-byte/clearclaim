@@ -55,8 +55,10 @@ export default async function Upgrade() {
               ? <p className="sans muted" style={{ fontSize: 13, marginTop: 14 }}>You're on the free plan.</p>
               : <p className="sans muted" style={{ fontSize: 13, marginTop: 14 }}>Included with every account.</p>}
           </PlanCard>
-          <PlanCard title="Family" price="$10" per="/mo — or $99/yr (2 months free)" features={FAMILY} active={plan.family} accent>
-            {plan.family ? <ManageBilling /> : <CheckoutButtons tier="family" monthly="$10" yearly="$99" />}
+          <PlanCard title="Family" price={plan.freeFamily ? "$0" : "$10"} per={plan.freeFamily ? "free for Arkansas" : "/mo — or $99/yr (2 months free)"} features={FAMILY} active={plan.family} accent>
+            {plan.freeFamily
+              ? <p className="sans" style={{ fontSize: 13, marginTop: 14, color: "var(--teal)" }}>Free for Arkansas families — no card needed. Every Family feature is unlocked.</p>
+              : plan.family ? <ManageBilling /> : <CheckoutButtons tier="family" monthly="$10" yearly="$99" />}
           </PlanCard>
           <PlanCard title="Provider" price="$19" per="/mo — or $189/yr (2 months free)" features={PROVIDER} active={plan.provider}>
             {plan.provider ? <ManageBilling /> : <CheckoutButtons tier="provider" monthly="$19" yearly="$189" />}
