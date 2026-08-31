@@ -254,17 +254,28 @@ export default async function Dashboard() {
               Utah caps extracurricular and PE at 20% of each student's award, and transportation at $750/year.
               Set a student's award in <Link href="/dashboard/settings" style={{ color: "var(--navy2)" }}>Settings</Link> to track these.
             </p>
-            {kids.map(k => {
+            <style>{`
+              .sb-item summary { list-style: none; }
+              .sb-item summary::-webkit-details-marker { display: none; }
+              .sb-chev { transition: transform .15s ease; }
+              .sb-item[open] .sb-chev { transform: rotate(180deg); }
+            `}</style>
+            {kids.map((k, ki) => {
               const award = Number(k.award_amount) || 0;
               const utUsed = (key) => (claims || [])
                 .filter(c => c.kid_id === k.id && utCategoryCapKey(c.category) === key && inBudgetYear(c, BY))
                 .reduce((s, c) => s + (Number(c.amount) || 0), 0);
               return (
-                <div key={k.id} style={{ marginBottom: 14 }}>
-                  <div className="sans" style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
-                    {k.first_name}
-                    <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · award {award ? money(award) : "not set"}</span>
-                  </div>
+                <details key={k.id} name="utbudget" open={ki === 0} className="kid sb-item" style={{ display: "block", padding: 0, marginBottom: 10 }}>
+                  <summary style={{ cursor: "pointer", padding: "13px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className="sans" style={{ fontWeight: 700, fontSize: 14 }}>
+                      {k.first_name}
+                      <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · award {award ? money(award) : "not set"}</span>
+                    </span>
+                    <span style={{ flex: 1 }} />
+                    <span className="sb-chev" aria-hidden="true" style={{ color: "var(--navy2)", fontSize: 12 }}>▼</span>
+                  </summary>
+                  <div style={{ padding: "0 16px 14px" }}>
                   {award > 0 ? utCaps(award).map(cap => {
                     const u = utUsed(cap.key);
                     const pct = cap.amount ? Math.min(100, (u / cap.amount) * 100) : 0;
@@ -282,7 +293,8 @@ export default async function Dashboard() {
                       </div>
                     );
                   }) : <p className="finenote">Add {k.first_name}'s award in Settings to see the 20% / 20% / $750 caps.</p>}
-                </div>
+                  </div>
+                </details>
               );
             })}
           </div>
@@ -312,38 +324,51 @@ export default async function Dashboard() {
             Capped categories per student, and where you log marketplace or approved spend that feeds them. Adds up claims plus
             anything you log, dated Jul–Jun. Technology counts base price (before tax &amp; shipping).
           </p>
-          {kids.map(k => {
+          <style>{`
+            .sb-item summary { list-style: none; }
+            .sb-item summary::-webkit-details-marker { display: none; }
+            .sb-chev { transition: transform .15s ease; }
+            .sb-item[open] .sb-chev { transform: rotate(180deg); }
+          `}</style>
+          <p className="finenote" style={{ marginTop: -6, marginBottom: 10 }}>Tap a student to open just their budget — the others collapse.</p>
+          {kids.map((k, ki) => {
             const caps = annualCaps(k.funding_tier);
             return (
-            <div key={k.id} className="kid" style={{ display: "block", padding: "14px 16px", marginBottom: 14 }}>
-              <div className="sans" style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
-                {k.first_name}
-                <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · {k.funding_tier === "succeed" ? "Succeed" : "Standard"} funding</span>
-              </div>
-              {CAP_META.map(cm => {
-                const cap = { ...cm, amount: caps[cm.key] };
-                const u = usedBy(k.id, cap.key);
-                const pct = Math.min(100, (u / cap.amount) * 100);
-                const over = u > cap.amount;
-                return (
-                  <div key={cap.key} style={{ marginBottom: 8 }}>
-                    <div className="sans" style={{ display: "flex", fontSize: 12.5, marginBottom: 3 }}>
-                      <span className="muted">{cap.label}</span>
-                      <span style={{ flex: 1 }} />
-                      <span style={{ fontWeight: 700, color: over ? "var(--red)" : "var(--muted)" }}>
-                        {money(u)} / {money(cap.amount)}
-                      </span>
+            <details key={k.id} name="studentbudget" open={ki === 0} className="kid sb-item" style={{ display: "block", padding: 0, marginBottom: 10 }}>
+              <summary style={{ cursor: "pointer", padding: "13px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                <span className="sans" style={{ fontWeight: 700, fontSize: 14 }}>
+                  {k.first_name}
+                  <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}> · {k.funding_tier === "succeed" ? "Succeed" : "Standard"} funding</span>
+                </span>
+                <span style={{ flex: 1 }} />
+                <span className="sb-chev" aria-hidden="true" style={{ color: "var(--navy2)", fontSize: 12 }}>▼</span>
+              </summary>
+              <div style={{ padding: "0 16px 14px" }}>
+                {CAP_META.map(cm => {
+                  const cap = { ...cm, amount: caps[cm.key] };
+                  const u = usedBy(k.id, cap.key);
+                  const pct = Math.min(100, (u / cap.amount) * 100);
+                  const over = u > cap.amount;
+                  return (
+                    <div key={cap.key} style={{ marginBottom: 8 }}>
+                      <div className="sans" style={{ display: "flex", fontSize: 12.5, marginBottom: 3 }}>
+                        <span className="muted">{cap.label}</span>
+                        <span style={{ flex: 1 }} />
+                        <span style={{ fontWeight: 700, color: over ? "var(--red)" : "var(--muted)" }}>
+                          {money(u)} / {money(cap.amount)}
+                        </span>
+                      </div>
+                      <div style={{ height: 8, background: "#eef2f7", borderRadius: 5, overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: over ? "var(--red)" : "var(--navy2)" }} />
+                      </div>
                     </div>
-                    <div style={{ height: 8, background: "#eef2f7", borderRadius: 5, overflow: "hidden" }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: over ? "var(--red)" : "var(--navy2)" }} />
-                    </div>
-                  </div>
-                );
-              })}
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
-                <CapLogger kid={k} entries={(capEntries || []).filter(e => e.kid_id === k.id)} bare />
+                  );
+                })}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                  <CapLogger kid={k} entries={(capEntries || []).filter(e => e.kid_id === k.id)} bare />
+                </div>
               </div>
-            </div>
+            </details>
           );})}
         </div>
         )}
