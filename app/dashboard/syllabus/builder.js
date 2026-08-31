@@ -108,6 +108,17 @@ export default function SyllabusBuilder({ kids = [], userId, existing, provider 
     setBusy(false);
   }
 
+  // Delete a syllabus you no longer need (owner-only via RLS).
+  async function remove() {
+    if (!editing) return;
+    if (!window.confirm("Delete this syllabus? This can't be undone.")) return;
+    setErr(""); setMsg(""); setBusy(true);
+    const { error } = await supabase.from("syllabi").delete().eq("id", existing.id);
+    if (error) { setErr("Could not delete: " + error.message); setBusy(false); return; }
+    router.push(providerMode ? "/provider" : "/dashboard");
+    router.refresh();
+  }
+
   if (!kids.length && !providerMode) {
     return <div className="card"><p className="sans">Add a student first, then build a syllabus.</p></div>;
   }
@@ -182,6 +193,7 @@ export default function SyllabusBuilder({ kids = [], userId, existing, provider 
         <button className="primary" disabled={busy} onClick={save}>{busy ? "Saving…" : editing ? "Save changes" : "Save syllabus"}</button>
         {editing && <button type="button" disabled={busy} onClick={duplicate}>Duplicate</button>}
         <button type="button" onClick={downloadPdf}>Download PDF</button>
+        {editing && <button type="button" disabled={busy} onClick={remove} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>}
         <button type="button" onClick={() => router.push(providerMode ? "/provider" : "/dashboard")} style={{ marginLeft: "auto" }}>Cancel</button>
       </div>
     </div>
