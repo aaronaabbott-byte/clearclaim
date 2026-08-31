@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { localSyllabusDraft } from "@/lib/syllabus";
 import { planFrom } from "@/lib/plan";
+import { getStateConfig } from "@/lib/states";
 
 // Drafts a full course syllabus. Returns structured fields the builder fills in.
 // Uses Claude when ANTHROPIC_API_KEY is set (server-only); otherwise a template.
@@ -13,14 +14,18 @@ export async function POST(request) {
   if (!planFrom(ent).family) return NextResponse.json({ draft: null, premium: true }, { status: 402 });
 
   const { input = {}, kid = {} } = await request.json().catch(() => ({}));
+  const { data: prof } = await supabase.from("profiles").select("state").eq("user_id", user.id).single();
+  const cfg = getStateConfig(prof?.state);
+  const stateName = cfg.name;   // e.g. "Arkansas"
   const fallback = localSyllabusDraft(input);
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return NextResponse.json({ draft: fallback, source: "template", reason: "no-key" });
 
   const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
   const prompt =
-`You are helping a homeschool parent write a real course syllabus that also works as formal curriculum documentation for an education-savings-account review (Arizona ESA or Arkansas EFA).
-Produce a specific, credible syllabus for the course below. Ground it in the grade level and the listed materials. Objectives must be measurable; "methods" must describe the teaching approach, lesson-plan structure, and the kinds of activities and exercises used; the schedule should be a realistic term-long scope and sequence; "materials" should list the required materials tied to the objectives; assessment must explain how progress is graded.
+`You are helping a homeschool parent write a real course syllabus that also works as formal curriculum documentation for an education-savings-account review in ${stateName}.
+Produce a specific, credible, detailed syllabus for the course below. Ground it in the grade level and the listed materials. Objectives must be measurable; "methods" must describe the teaching approach, lesson-plan structure, and the kinds of activities and exercises used; the schedule must be a realistic, week-by-week (or unit-by-unit) scope and sequence a parent could actually follow, with specific topics each week; "materials" should list the required materials tied to the objectives; assessment must explain how progress is graded.
+For "standards": align to ${stateName} academic standards for this subject and grade. Reference ${stateName} only — never cite another state's standards.
 Do not assume the student's gender — use the student's name or "the student", never he/she/him/her.
 
 Return ONLY valid minified JSON with exactly these string keys: description, objectives, methods, standards, materials, schedule, assessment.
