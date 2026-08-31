@@ -27,6 +27,7 @@ export default function SyllabusBuilder({ kids = [], userId, existing, provider 
     materials: existing?.materials || "",
     schedule: existing?.schedule || "",
     assessment: existing?.assessment || "",
+    resources: existing?.resources || "",
   });
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -172,6 +173,7 @@ export default function SyllabusBuilder({ kids = [], userId, existing, provider 
       <Area label="Required materials" k="materials" rows={3} ph="Texts, workbooks, and resources required to meet the objectives." />
       <Area label="Scope & sequence (schedule)" k="schedule" rows={6} ph="Week-by-week or unit plan." />
       <Area label="Assessment & grading" k="assessment" rows={4} ph="How progress is measured and graded." />
+      <Area label="Resources & materials (videos, tutorials, sites)" k="resources" rows={5} ph="Web resources for the course. The AI draft searches the web and fills these in — review the links and edit or remove any that look off before saving." />
 
       {err && <p style={{ color: "var(--red)", fontSize: 13 }}>{err}</p>}
       {msg && <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>}

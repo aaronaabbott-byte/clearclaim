@@ -28,8 +28,10 @@ Produce a specific, credible, detailed syllabus for the course below. Ground it 
 For "standards": align to ${stateName} academic standards for this subject and grade. Reference ${stateName} only — never cite another state's standards.
 Do not assume the student's gender — use the student's name or "the student", never he/she/him/her.
 
-Return ONLY valid minified JSON with exactly these string keys: description, objectives, methods, standards, materials, schedule, assessment.
-Use "\\n" for line breaks inside a value. No markdown, no commentary, no extra keys.
+For "resources": use the web_search tool to find real, current, age-appropriate resources for this course — free videos, tutorials, printables, and reputable educational websites. List each as "Title — https://url", one per line, grouped by unit or topic where helpful. Prefer reputable educational sources. ONLY include links you actually found via web search; never invent a URL.
+
+Return ONLY valid minified JSON with exactly these string keys: description, objectives, methods, standards, materials, schedule, assessment, resources.
+Use "\\n" for line breaks inside a value. No markdown, no commentary, no extra keys. After any web searches, your final message must be only the JSON object.
 
 Course title: ${input.title || "(none)"}
 Subject: ${input.subject || "(none)"}
@@ -45,11 +47,19 @@ Extra notes: ${input.notes || "(none)"}`;
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model, max_tokens: 1400, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({
+        model, max_tokens: 2200,
+        // Let Claude search the web to find real, current resources for the plan.
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
     if (!r.ok) return NextResponse.json({ draft: fallback, source: "template", error: `api_${r.status}` });
     const data = await r.json();
-    const raw = (data?.content?.[0]?.text || "").trim();
+    // With web search the response has several blocks (search calls/results +
+    // text); join all the text blocks to get the model's JSON answer.
+    const raw = (Array.isArray(data?.content) ? data.content : [])
+      .filter(b => b?.type === "text").map(b => b.text).join("\n").trim();
     let parsed = null;
     try {
       const jsonStr = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
@@ -66,6 +76,7 @@ Extra notes: ${input.notes || "(none)"}`;
       materials: parsed.materials || input.materials || fallback.materials,
       schedule: parsed.schedule || fallback.schedule,
       assessment: parsed.assessment || fallback.assessment,
+      resources: parsed.resources || "",
     };
     return NextResponse.json({ draft, source: "ai" });
   } catch (e) {
