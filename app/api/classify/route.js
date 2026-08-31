@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { config, fallbackClassify, validateVerdict, computeAction } from "@/lib/classify";
+import { screenExclusion } from "@/lib/exclusions";
 import { planFrom } from "@/lib/plan";
 
 function systemPrompt() {
@@ -46,7 +47,12 @@ export async function POST(request) {
 
   let verdict;
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || !description.trim() || !family) {
+  // Hard rule-based exclusions (e.g. streaming services, general clothing) are
+  // decided by the rule screen, not the AI, so an "it's educational" framing can
+  // never talk the model into calling them eligible.
+  if (description.trim() && screenExclusion(description)) {
+    verdict = fallbackClassify(description);
+  } else if (!key || !description.trim() || !family) {
     verdict = fallbackClassify(description);
     if (!family && key) verdict.note = "You're on the free plan, so this is a rules-based keyword check. Upgrade for the AI reading with reasoning.";
     else if (!key) verdict.note = "Automated classifier is running in basic mode (no AI key). This is a keyword match, not a full reading.";
