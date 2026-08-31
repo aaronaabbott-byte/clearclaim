@@ -63,7 +63,7 @@ export default async function Dashboard() {
   if (!hasKids) {
     return (
       <>
-        <Bar email={user.email} settings={false} admin={isAdmin(user.email)} providerView={isProvider} />
+        <Bar email={user.email} settings={false} admin={isAdmin(user.email)} providerView={isProvider} feat={feat} />
         <main>
           <div className="card" style={{ textAlign: "center", padding: "34px 26px" }}>
             <img src="/wordmark.png" alt="ClearClaim" style={{ width: "min(280px,70%)", margin: "0 auto 6px" }} />
@@ -89,7 +89,7 @@ export default async function Dashboard() {
 
   return (
     <>
-      <Bar email={user.email} admin={isAdmin(user.email)} providerView={isProvider} />
+      <Bar email={user.email} admin={isAdmin(user.email)} providerView={isProvider} feat={feat} />
       <main>
         {isDemo && <DemoReset />}
         {isFree && <UpgradeBanner />}
@@ -114,6 +114,7 @@ export default async function Dashboard() {
           </div>
         </div>
 
+        {feat.coreNonCore && (
         <div className="card" style={{ borderColor: "var(--navy2)", background: "linear-gradient(180deg,#f2f6fb,#fff)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <h2 style={{ margin: 0 }}>Check eligibility first</h2>
@@ -126,7 +127,9 @@ export default async function Dashboard() {
             save you from paying out of pocket for something that will not be reimbursed.
           </p>
         </div>
+        )}
 
+        {feat.preapprovalTool && (
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h2 style={{ margin: 0 }}>Pre-approvals</h2>
@@ -153,6 +156,7 @@ export default async function Dashboard() {
             </div>
           )}
         </div>
+        )}
 
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -235,7 +239,7 @@ export default async function Dashboard() {
             <Link href="/dashboard/documents"><button>Document library</button></Link>
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
             <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
-            <Link href="/dashboard/submit-steps"><button>How to submit on ClassWallet</button></Link>
+            <Link href="/dashboard/submit-steps"><button>How to submit on {stateConfig?.platform || "your program's portal"}</button></Link>
           </div>
           <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
             Upload booklists and supply lists, annotate a receipt or booklist, or black out the parts of a
@@ -245,7 +249,7 @@ export default async function Dashboard() {
 
         {feat.coCurricularChecklist && <CocurricularGuide />}
 
-        {hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
+        {feat.homeschoolCompliance && hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
 
         {stateConfig?.code === "UT" && (
           <div className="card">

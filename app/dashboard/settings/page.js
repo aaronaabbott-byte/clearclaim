@@ -18,8 +18,9 @@ export default async function Settings() {
   const showCaps = !!(stateConfig?.features?.techCap || stateConfig?.features?.percentCaps);
   const showAward = !!stateConfig?.features?.perStudentAward;
   const showTier = !!stateConfig?.features?.fundingTiers;
-  // Changing state swaps the whole rulebook, so regular users can't switch it
-  // themselves — only the demo account and admins can (for demos/support).
+  const programShort = stateConfig?.programShort || "the program";
+  // Changing state swaps the whole rulebook, so only the demo account and admins
+  // can switch it here; regular users see it read-only.
   const canSwitchState = isAdmin(user.email) || (user.email || "").toLowerCase() === DEMO_EMAIL;
   const isParent = profile?.is_parent ?? true;
   const isProvider = profile?.is_provider ?? false;
@@ -88,7 +89,7 @@ export default async function Settings() {
                 <h3 className="sans" style={{ fontFamily: "var(--serif)", fontSize: 17, color: "var(--navy)", margin: "0 0 8px" }}>Add a student</h3>
                 {/* key on the student count remounts the form after each add, so the
                     fields clear instead of carrying the last student's values over. */}
-                <KidForm key={kids?.length ?? 0} first={!hasKids} showAward={showAward} showTier={showTier} />
+                <KidForm key={kids?.length ?? 0} first={!hasKids} showAward={showAward} showTier={showTier} programShort={programShort} />
               </div>
             </div>
 
@@ -106,7 +107,7 @@ export default async function Settings() {
                       <div className="sans" style={{ fontWeight: 700, fontSize: 15, color: "var(--navy)", marginBottom: 10 }}>
                         {k.first_name}{k.grade ? <span className="muted" style={{ fontWeight: 400, fontSize: 13 }}> · grade {k.grade}</span> : null}
                       </div>
-                      <KidEdit k={k} bare showAward={showAward} showTier={showTier} />
+                      <KidEdit k={k} bare showAward={showAward} showTier={showTier} programShort={programShort} />
                     </div>
                   ))}
                 </div>

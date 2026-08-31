@@ -33,7 +33,7 @@ function AwardField({ value }) {
 
 // Add-a-student form (blank). `showAward` reveals the award field for states
 // where the scholarship varies per student (e.g. Utah, Arizona disability).
-export function KidForm({ first = true, showAward = false, showTier = true }) {
+export function KidForm({ first = true, showAward = false, showTier = true, programShort = "the program" }) {
   return (
     <form action={addKid}>
       <div className="row">
@@ -45,10 +45,10 @@ export function KidForm({ first = true, showAward = false, showTier = true }) {
       <div className="row" style={{ marginTop: 8 }}>
         <div><label>School name (skip if homeschool)</label><input name="school_name" /></div>
         <div><label>Subjects / courses (optional)</label><input name="subjects" placeholder="Math, Latin, Science" /></div>
-        <div><label>Year joined EFA (optional)</label><input name="program_start_year" inputMode="numeric" placeholder="e.g. 2026" /></div>
+        <div><label>Year joined {programShort} (optional)</label><input name="program_start_year" inputMode="numeric" placeholder="e.g. 2026" /></div>
       </div>
       <div style={{ marginTop: 8 }}>
-        <label>Technology received through EFA in prior years (optional)</label>
+        <label>Technology received through {programShort} in prior years (optional)</label>
         <input name="prior_tech" placeholder="e.g. tablet (2025); printer (2025)" />
         <p className="finenote" style={{ marginTop: 4 }}>Devices and the year only. Used to strengthen technology requests and avoid duplication. Do not enter any health or medical information.</p>
       </div>
@@ -61,7 +61,7 @@ export function KidForm({ first = true, showAward = false, showTier = true }) {
 
 // Inline editable student card. `bare` drops the outer box so it can be nested
 // inside a per-student card that also holds the cap tracker.
-export function KidEdit({ k, bare = false, showAward = false, showTier = true }) {
+export function KidEdit({ k, bare = false, showAward = false, showTier = true, programShort = "the program" }) {
   const inner = (
     <>
       <form action={updateKid}>
@@ -75,10 +75,10 @@ export function KidEdit({ k, bare = false, showAward = false, showTier = true })
         <div className="row" style={{ marginTop: 8 }}>
           <div><label>School name (skip if homeschool)</label><input name="school_name" defaultValue={k.school_name || ""} /></div>
           <div><label>Subjects / courses</label><input name="subjects" defaultValue={k.subjects || ""} /></div>
-          <div><label>Year joined EFA</label><input name="program_start_year" inputMode="numeric" defaultValue={k.program_start_year || ""} placeholder="e.g. 2026" /></div>
+          <div><label>Year joined {programShort}</label><input name="program_start_year" inputMode="numeric" defaultValue={k.program_start_year || ""} placeholder="e.g. 2026" /></div>
         </div>
         <div style={{ marginTop: 8 }}>
-          <label>Technology received through EFA in prior years</label>
+          <label>Technology received through {programShort} in prior years</label>
           <input name="prior_tech" defaultValue={k.prior_tech || ""} placeholder="e.g. tablet (2025); printer (2025)" />
           <p className="finenote" style={{ marginTop: 4 }}>Devices and the year only. Used to strengthen technology requests and avoid duplication. Do not enter any health or medical information.</p>
         </div>
@@ -101,22 +101,22 @@ export function KidEdit({ k, bare = false, showAward = false, showTier = true })
 // App header. `settings` shows a gear link; sign-out always present.
 // `admin` shows an Admin link; `providerView` / `parentView` show cross-links
 // between the two views (only for accounts that have both roles).
-export function Bar({ email, settings = true, admin = false, providerView = false, parentView = false }) {
+export function Bar({ email, settings = true, admin = false, providerView = false, parentView = false, feat = {} }) {
   const items = [];
   if (providerView) items.push({ label: "Provider view", href: "/provider" });
   if (parentView) items.push({ label: "Parent view", href: "/dashboard" });
   // Full navigation to the main parent-side destinations (hidden on the provider
-  // view, where `parentView` is set).
+  // view, where `parentView` is set). The eligibility and pre-approval tools are
+  // Arkansas-specific advisory features, so they only appear when the account's
+  // state enables them.
   if (!parentView) {
-    items.push(
-      { label: "Dashboard", href: "/dashboard" },
-      { label: "Start a claim", href: "/dashboard/claims/new" },
-      { label: "Check eligibility", href: "/dashboard/eligibility" },
-      { label: "Documents", href: "/dashboard/documents" },
-      { label: "Pre-approvals", href: "/dashboard/preapproval/new" },
-      { label: "How to submit", href: "/dashboard/submit-steps" },
-      { label: "Students & budget", href: "/dashboard/settings" },
-    );
+    items.push({ label: "Dashboard", href: "/dashboard" });
+    items.push({ label: "Start a claim", href: "/dashboard/claims/new" });
+    if (feat.coreNonCore) items.push({ label: "Check eligibility", href: "/dashboard/eligibility" });
+    items.push({ label: "Documents", href: "/dashboard/documents" });
+    if (feat.preapprovalTool) items.push({ label: "Pre-approvals", href: "/dashboard/preapproval/new" });
+    items.push({ label: "How to submit", href: "/dashboard/submit-steps" });
+    items.push({ label: "Students & budget", href: "/dashboard/settings" });
   }
   if (settings && parentView) items.push({ label: "Settings", href: "/dashboard/settings" });
   items.push({ label: "Plans & billing", href: "/upgrade" });

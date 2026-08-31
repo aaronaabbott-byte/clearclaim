@@ -3,6 +3,7 @@ import { planFrom } from "@/lib/plan";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { categoryCap, efaBudgetYear, inBudgetYear, capContribution, sumCapEntries } from "@/lib/rules";
+import { getProfile } from "@/lib/profile";
 import PreapprovalBuilder from "../builder";
 
 export default async function NewPreapproval({ searchParams }) {
@@ -10,6 +11,8 @@ export default async function NewPreapproval({ searchParams }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   { const { data: __ent } = await createClient().from("entitlements").select("*").eq("user_id", user.id).single(); if (!planFrom(__ent).family) redirect("/upgrade"); }
+  // Pre-approval encodes Arkansas's Department pre-approval flow; only Arkansas accounts see it.
+  { const { stateConfig } = await getProfile(); if (!stateConfig?.features?.preapprovalTool) redirect("/dashboard"); }
   const { data: rawKids } = await supabase.from("kids").select("id,first_name,grade,prior_tech")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });

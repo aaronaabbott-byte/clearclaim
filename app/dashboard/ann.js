@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const GREETING = { role: "assistant", content: "Hi, I'm Ann. Ask me anything about EFA reimbursements, ClassWallet, what's eligible, or how to use ClearClaim." };
+const GREETING = { role: "assistant", content: "Hi, I'm Ann. Ask me anything about your education-fund reimbursements, putting together a submission, or how to use ClearClaim." };
 
 export default function AskAnn() {
   const [open, setOpen] = useState(false);
@@ -62,7 +62,7 @@ export default function AskAnn() {
             <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--gold)", color: "#3a2a06", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontFamily: "var(--serif)" }}>A</div>
             <div>
               <div style={{ fontWeight: 700, fontFamily: "var(--serif)", fontSize: 17 }}>Ask Ann</div>
-              <div style={{ fontSize: 11.5, color: "#cadaee" }}>EFA & ClearClaim help</div>
+              <div style={{ fontSize: 11.5, color: "#cadaee" }}>Reimbursement & ClearClaim help</div>
             </div>
           </div>
 

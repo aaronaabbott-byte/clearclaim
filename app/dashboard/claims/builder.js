@@ -6,6 +6,7 @@ import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
   categoryCap, efaBudgetYear, inBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
 import { checkClaimAZ } from "@/lib/states/az-rules";
 import { checkClaimUT, utCaps, utCategoryCapKey } from "@/lib/states/ut-rules";
+import { getStateConfig } from "@/lib/states";
 const STATE_CHECKERS = { AZ: checkClaimAZ, UT: checkClaimUT };
 const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
 const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -55,6 +56,7 @@ export default function ClaimBuilder({
   features = { splitReimbursement: true, techCap: true, percentCaps: true },
 }) {
   const runCheck = STATE_CHECKERS[state] || checkClaim;
+  const platform = getStateConfig(state)?.platform || "the portal";
   const showCaps = !!(features.techCap || features.percentCaps);
   const router = useRouter();
   const supabase = createClient();
@@ -251,7 +253,7 @@ export default function ClaimBuilder({
     }
     setMsg(splitOn && splitKids.length > 1
       ? `Built ${splitKids.length} packets — one per student, each showing the split.`
-      : (files > 1 ? `Your packet was split into ${files} files so each stays under ClassWallet's page limit. Upload all ${files} to the same submission.` : ""));
+      : (files > 1 ? `Your packet was split into ${files} files so each stays under ${platform}'s page limit. Upload all ${files} to the same submission.` : ""));
   }
 
   async function saveAndBuild() {
@@ -296,7 +298,7 @@ export default function ClaimBuilder({
         ? `Saved ${variants.length} claims (one per student) and downloaded their packets.`
         : "Saved and packet downloaded.";
       const splitNote = variants.length === 1 && totalFiles > 1
-        ? ` Your packet is ${totalFiles} files, each under ClassWallet's page limit — upload all ${totalFiles} to the same submission.`
+        ? ` Your packet is ${totalFiles} files, each under ${platform}'s page limit — upload all ${totalFiles} to the same submission.`
         : "";
       setMsg(head + splitNote + storeNote);
       router.refresh();

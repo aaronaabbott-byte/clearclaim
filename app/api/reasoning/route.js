@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { draftReasoning } from "@/lib/rules";
 import { planFrom } from "@/lib/plan";
+import { getStateConfig } from "@/lib/states";
 
 // Generates an educational-use justification with Claude. The API key lives only
 // on the server (ANTHROPIC_API_KEY) and is never exposed to the browser. If no
@@ -19,9 +20,13 @@ export async function POST(request) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return NextResponse.json({ text: null, fallback, reason: "no-key" });
 
+  const { data: prof } = await supabase.from("profiles").select("state").eq("user_id", user.id).single();
+  const cfg = getStateConfig((prof?.state || "AR").toUpperCase());
+  const programName = `${cfg?.name || ""} ${cfg?.program || "education savings account"}`.trim();
+
   const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
   const prompt =
-`You write the "educational-use justification" a parent submits with an Arkansas EFA education-fund reimbursement.
+`You write the "educational-use justification" a parent submits with a ${programName} education-fund reimbursement.
 Write 2 to 4 short, concrete, first-person sentences explaining how THIS student uses THESE specific items in THEIR classes.
 Rules: be specific and factual; name the items and the course/subject where natural; do NOT write a generic "benefits of X" essay; do not list benefits; no marketing language, no headings, no bullet points. Plain sentences only. Do NOT assume the student's gender — never use "he", "she", "him", or "her"; use the student's first name or "the student" instead. Return ONLY the justification text.
 
