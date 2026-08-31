@@ -78,7 +78,7 @@ export default function DocumentLibrary({ userId, kids, documents }) {
         </p>
         <form onSubmit={upload}>
           <div className="row">
-            <div><label>File</label><input ref={fileRef} type="file" accept="image/*,application/pdf" />
+            <div><label>File</label><input ref={fileRef} type="file" accept="image/*,.heic,.heif,application/pdf" />
               <label className="sans" style={{ display: "inline-block", marginTop: 6, fontSize: 13, padding: "7px 12px", borderRadius: 10, border: "1px solid var(--navy2)", color: "var(--navy2)", cursor: "pointer" }}>
                 📷 Take photo instead
                 <input ref={camRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={() => { if (fileRef.current) fileRef.current.value = ""; }} />

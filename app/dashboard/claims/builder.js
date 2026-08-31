@@ -23,7 +23,7 @@ function FileField({ files, onAdd, onRemove, hint }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
         <label style={btn}>
           + Add file
-          <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }}
+          <input type="file" accept="image/*,.heic,.heif,application/pdf" multiple style={{ display: "none" }}
             onChange={e => { onAdd(e.target.files); e.target.value = ""; }} />
         </label>
         <label style={{ ...btn, color: "var(--navy2)", borderColor: "var(--navy2)" }}>
