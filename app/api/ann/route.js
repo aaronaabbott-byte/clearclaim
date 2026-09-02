@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { planFrom } from "@/lib/plan";
 import { getStateConfig } from "@/lib/states";
-import { bestVendorMatch, findVendors } from "@/lib/vendors";
+import { bestVendorMatch, findVendors, scanMessageForVendor } from "@/lib/vendors";
 
 // Pull a likely vendor name out of a question like "is Varsity Tutors a vendor?"
 // or "where do I find AOP in classwallet?". Returns the candidate phrase, or "".
@@ -22,6 +22,8 @@ function extractVendorQuery(msg) {
   const pats = [
     /\bis\s+(.+?)\s+(?:an?\s+)?(?:approved\s+)?(?:a\s+)?vendor\b/i,
     /\bis\s+(.+?)\s+(?:approved|on\s+class\s*wallet|in\s+class\s*wallet|a\s+class\s*wallet|available)/i,
+    /\bis\s+(.+?)\s+(?:a\s+)?(?:direct\s*pay|market\s*place|marketplace|reimbursement)\b/i,
+    /\bdoes\s+(.+?)\s+(?:do|take|accept|use)\s+(?:direct\s*pay|class\s*wallet|marketplace)/i,
     /\bcan\s+(?:i|we)\s+use\s+(.+?)(?:\s+(?:in|on|with|for)\b|\?|$)/i,
     /\b(?:what|how)\s+about\s+(.+?)(?:\?|$)/i,
     /\b(?:find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there)\s+(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\s+as a vendor|\?|$)/i,
@@ -38,13 +40,27 @@ function extractVendorQuery(msg) {
   return "";
 }
 
+// Same intent cues as the extractor, used to decide whether to also scan the
+// whole message for a vendor name when the specific pattern didn't capture one.
+const HAS_VENDOR_INTENT = (msg) => {
+  const lower = (msg || "").toLowerCase();
+  return STRONG_VENDOR_INTENT.test(lower)
+    || /\b(find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there|can (?:i|we) use|what about|how about|where(?:'s| is| are| can i| do i)?)\b/.test(lower);
+};
+
 function vendorLookupNote(cfg, trimmed) {
   if (cfg?.code !== "AR") return "";
   const lastUser = [...trimmed].reverse().find((m) => m.role === "user")?.content || "";
   const phrase = extractVendorQuery(lastUser);
-  if (!phrase) return "";
-  const best = bestVendorMatch(phrase);
-  const list = findVendors(phrase, 6);
+  let best = phrase ? bestVendorMatch(phrase) : null;
+  let list = phrase ? findVendors(phrase, 6) : [];
+  // Fallback: if the pattern didn't yield a confident hit but the message names a
+  // specific vendor and reads like a vendor question, scan the whole message.
+  if ((!best || !best.confident) && HAS_VENDOR_INTENT(lastUser)) {
+    const scan = scanMessageForVendor(lastUser);
+    if (scan) { best = scan; if (!list.length) list = [scan.vendor]; }
+  }
+  if (!phrase && !best) return "";
   const tag = (v) => (v.type === "marketplace" ? "Marketplace" : "Direct Pay");
   if (best && best.confident) {
     const also = best.vendor.aliases?.length ? ` (also called: ${best.vendor.aliases.join(", ")})` : "";

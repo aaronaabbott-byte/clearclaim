@@ -3,6 +3,19 @@ import { useEffect, useRef, useState } from "react";
 
 const GREETING = { role: "assistant", content: "Hi, I'm Ann. Ask me anything about your education-fund reimbursements, putting together a submission, or how to use ClearClaim." };
 
+// Lightweight renderer for the little markdown Ann uses: **bold** and `*italic*`.
+// Newlines are handled by the bubble's white-space: pre-wrap.
+function Rich({ text }) {
+  const parts = String(text || "").split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((p, i) => {
+    let m = /^\*\*([\s\S]+)\*\*$/.exec(p);
+    if (m) return <strong key={i}>{m[1]}</strong>;
+    m = /^\*([\s\S]+)\*$/.exec(p);
+    if (m) return <em key={i}>{m[1]}</em>;
+    return <span key={i}>{p}</span>;
+  });
+}
+
 export default function AskAnn() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([GREETING]);
@@ -73,7 +86,7 @@ export default function AskAnn() {
                   maxWidth: "82%", padding: "9px 12px", borderRadius: 14, fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap",
                   background: m.role === "user" ? "var(--navy2)" : "#fff", color: m.role === "user" ? "#fff" : "var(--ink)",
                   border: m.role === "user" ? "none" : "1px solid var(--line)",
-                }}>{m.content}</div>
+                }}><Rich text={m.content} /></div>
               </div>
             ))}
             {busy && <div className="muted" style={{ fontSize: 13, fontStyle: "italic" }}>Ann is typing…</div>}
