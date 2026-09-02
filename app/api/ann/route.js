@@ -2,6 +2,63 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { planFrom } from "@/lib/plan";
 import { getStateConfig } from "@/lib/states";
+import { bestVendorMatch, findVendors } from "@/lib/vendors";
+
+// Pull a likely vendor name out of a question like "is Varsity Tutors a vendor?"
+// or "where do I find AOP in classwallet?". Returns the candidate phrase, or "".
+// "vendor / classwallet / direct pay / marketplace / approved" is an explicit
+// vendor question; the rest are weaker cues where we only speak up on a real hit.
+const STRONG_VENDOR_INTENT = /(vendor|class\s*wallet|classwallet|direct\s*pay|marketplace|\bapproved\b)/i;
+
+function extractVendorQuery(msg) {
+  const s = (msg || "").trim();
+  if (!s) return "";
+  const lower = s.toLowerCase();
+  const intent = STRONG_VENDOR_INTENT.test(lower)
+    || /\b(find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there|where(?:'s| is| are| can i| do i)?)\b/.test(lower);
+  if (!intent) return "";
+  const quoted = s.match(/["'“”‘’]([^"'“”‘’]{2,60})["'“”‘’]/);
+  if (quoted) return quoted[1].trim();
+  const pats = [
+    /\bis\s+(.+?)\s+(?:an?\s+)?(?:approved\s+)?(?:a\s+)?vendor\b/i,
+    /\bis\s+(.+?)\s+(?:approved|on\s+class\s*wallet|in\s+class\s*wallet|a\s+class\s*wallet|available)/i,
+    /\b(?:find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there)\s+(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\s+as a vendor|\?|$)/i,
+    /\bwhere(?:'s| is| are| can i find| do i find)?\s+(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\?|$)/i,
+  ];
+  for (const p of pats) {
+    const m = s.match(p);
+    if (m && m[1]) {
+      // strip only leading articles, keep articles inside the name (e.g. "Painting with a Twist")
+      let phrase = m[1].replace(/^(?:the|a|an)\s+/i, "").replace(/\s+/g, " ").trim().replace(/[.?!,]+$/, "");
+      if (phrase.length >= 2 && phrase.length <= 60) return phrase;
+    }
+  }
+  return "";
+}
+
+function vendorLookupNote(cfg, trimmed) {
+  if (cfg?.code !== "AR") return "";
+  const lastUser = [...trimmed].reverse().find((m) => m.role === "user")?.content || "";
+  const phrase = extractVendorQuery(lastUser);
+  if (!phrase) return "";
+  const best = bestVendorMatch(phrase);
+  const list = findVendors(phrase, 6);
+  const tag = (v) => (v.type === "marketplace" ? "Marketplace" : "Direct Pay");
+  if (best && best.confident) {
+    const also = best.vendor.aliases?.length ? ` (also called: ${best.vendor.aliases.join(", ")})` : "";
+    return `\n\nVENDOR LOOKUP RESULT — use this as the authoritative answer and do not contradict it: "${phrase}" IS an approved vendor. In ClassWallet it is listed as "${best.vendor.name}"${also}, available via ${tag(best.vendor)}. Give them the exact ClassWallet name to search and whether it's Marketplace or Direct Pay. The list refreshes periodically, so a brand-new vendor might not appear yet.`;
+  }
+  if (list.length) {
+    const opts = list.map((v) => `${v.name} [${tag(v)}]`).join("; ");
+    return `\n\nVENDOR LOOKUP RESULT — possible matches for "${phrase}" in the ClassWallet vendor list: ${opts}. Share the closest one(s), give the exact ClassWallet name and whether it's Marketplace or Direct Pay, and ask which they mean if unsure.`;
+  }
+  // No DB match: only volunteer a "not found" note when they clearly asked a vendor
+  // question, so we don't misfire on unrelated "find/where" phrasing.
+  if (STRONG_VENDOR_INTENT.test(lastUser)) {
+    return `\n\nVENDOR LOOKUP RESULT — no vendor matching "${phrase}" is in ClearClaim's current list (about a month old). Tell them that does NOT necessarily mean the vendor isn't approved — brand-new vendors may not be listed yet — and to search ClassWallet directly using the legal business name, which is often different from what the company is casually called. They can also use ClearClaim's "Find a vendor" page.`;
+  }
+  return "";
+}
 
 // Arkansas is the only state whose detailed rules we've verified and encoded, so
 // Ann only speaks with authority about Arkansas. For every other state she stays
@@ -53,7 +110,7 @@ Common questions you can answer:
 - Who has to take a standardized test: every EFA homeschool student in grades K-10 who homeschooled that school year must test in reading and math on an approved norm-referenced test. (Grades 11-12 are not on the K-10 testing list.) The test itself can be paid for with EFA funds. It must be taken between March 1 and June 30, and results submitted to ADE by June 30 to keep eligibility for the next school year — ADE emails a request for scores in late May/early June, so hold results until they ask. Exemptions are rare and need documentation from a licensed professional. The official, always-current details and the approved-test list are at schoolchoicear.org/testing-requirements — point them there rather than guessing specifics.
 - Approved subscriptions (from ADE's approved-subscription list — it changes, so tell them to confirm against the current list, and most need a short educational-use justification): Yoto Club — YES, approved for a student's educational use. Also generally approved: Audible, Kindle Unlimited, Yousician, Drumeo, Simply Piano/Playground Sessions, Babbel, and ChatGPT Go and Plus. Generally NOT approved: ChatGPT Pro, Canva for Business (Canva Pro needs pre-approval), the "lifetime" one-time plans of several services, and any streaming service (Netflix, Disney+, Hulu, YouTube streaming). When someone asks about a specific subscription, give the known answer if it's on this list, otherwise tell them to check the ADE subscription list, and remind them educational-use justification is expected.
 - Pre-approval: non-core purchases need the Department's pre-approval before buying; ClearClaim's Pre-approvals tool fills the ADE Google Form for them.
-- Where to find vendors: there is no single complete list. Suggest checking more than one source — the state's School Choice vendor page (the one the state acknowledges, though it isn't very user-friendly), community vendor directories and ad pages, and a Google Maps search for local providers. Remind them ClearClaim isn't affiliated with the state and none of these lists is exhaustive.
+- Where to find vendors: ClearClaim has a "Find a vendor" tool (Dashboard → Documents & tools → Find a vendor) that searches the ClassWallet vendor list by business name OR by what people actually call the company, and shows whether each is Marketplace or Direct Pay. Point them there first. A huge source of "is so-and-so a vendor / I can't find them" confusion is that a company's legal business name in ClassWallet often does NOT match the name it's marketed under — so if they can't find someone, have them try the legal/registered name. Also suggest the state's School Choice vendor page, community directories/ad pages, and a Google Maps search. When ClearClaim's lookup returns a result, trust it; when it doesn't, remind them the list is refreshed periodically and a brand-new vendor may not be in it yet, and that none of these lists is exhaustive. ClearClaim isn't affiliated with the state.
 
 How ClearClaim helps (point them to these when it fits):
 - Check eligibility: type what you want to buy and find out if it is core or non-core before you spend.
@@ -99,7 +156,7 @@ export async function POST(request) {
 
   const { data: prof } = await supabase.from("profiles").select("state").eq("user_id", user.id).single();
   const stateConfig = getStateConfig((prof?.state || "AR").toUpperCase());
-  const system = buildSystem(stateConfig);
+  const baseSystem = buildSystem(stateConfig);
 
   const { messages = [] } = await request.json().catch(() => ({}));
   const key = process.env.ANTHROPIC_API_KEY;
@@ -110,6 +167,10 @@ export async function POST(request) {
     role: m.role === "assistant" ? "assistant" : "user",
     content: String(m.content || "").slice(0, 4000),
   }));
+
+  // If the latest message is a vendor question, look it up locally and hand Ann
+  // the answer so she can respond precisely instead of guessing.
+  const system = baseSystem + vendorLookupNote(stateConfig, trimmed);
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {

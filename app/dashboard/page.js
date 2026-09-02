@@ -240,6 +240,7 @@ export default async function Dashboard() {
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
             <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
             <Link href="/dashboard/submit-steps"><button>How to submit on {stateConfig?.platform || "your program's portal"}</button></Link>
+            {feat.vendorDirectory && <Link href="/dashboard/vendors"><button>Find a vendor</button></Link>}
           </div>
           <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
             Upload booklists and supply lists, annotate a receipt or booklist, or black out the parts of a

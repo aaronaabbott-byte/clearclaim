@@ -115,6 +115,7 @@ export function Bar({ email, settings = true, admin = false, providerView = fals
     if (feat.coreNonCore) items.push({ label: "Check eligibility", href: "/dashboard/eligibility" });
     items.push({ label: "Documents", href: "/dashboard/documents" });
     if (feat.preapprovalTool) items.push({ label: "Pre-approvals", href: "/dashboard/preapproval/new" });
+    if (feat.vendorDirectory) items.push({ label: "Find a vendor", href: "/dashboard/vendors" });
     items.push({ label: "How to submit", href: "/dashboard/submit-steps" });
     items.push({ label: "Students & budget", href: "/dashboard/settings" });
   }
