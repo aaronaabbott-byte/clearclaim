@@ -15,13 +15,15 @@ function extractVendorQuery(msg) {
   if (!s) return "";
   const lower = s.toLowerCase();
   const intent = STRONG_VENDOR_INTENT.test(lower)
-    || /\b(find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there|where(?:'s| is| are| can i| do i)?)\b/.test(lower);
+    || /\b(find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there|can (?:i|we) use|what about|how about|where(?:'s| is| are| can i| do i)?)\b/.test(lower);
   if (!intent) return "";
   const quoted = s.match(/["'“”‘’]([^"'“”‘’]{2,60})["'“”‘’]/);
   if (quoted) return quoted[1].trim();
   const pats = [
     /\bis\s+(.+?)\s+(?:an?\s+)?(?:approved\s+)?(?:a\s+)?vendor\b/i,
     /\bis\s+(.+?)\s+(?:approved|on\s+class\s*wallet|in\s+class\s*wallet|a\s+class\s*wallet|available)/i,
+    /\bcan\s+(?:i|we)\s+use\s+(.+?)(?:\s+(?:in|on|with|for)\b|\?|$)/i,
+    /\b(?:what|how)\s+about\s+(.+?)(?:\?|$)/i,
     /\b(?:find|search for|looking for|look up|do (?:you|they) (?:have|carry|sell)|is there)\s+(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\s+as a vendor|\?|$)/i,
     /\bwhere(?:'s| is| are| can i find| do i find)?\s+(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\?|$)/i,
   ];
@@ -46,11 +48,11 @@ function vendorLookupNote(cfg, trimmed) {
   const tag = (v) => (v.type === "marketplace" ? "Marketplace" : "Direct Pay");
   if (best && best.confident) {
     const also = best.vendor.aliases?.length ? ` (also called: ${best.vendor.aliases.join(", ")})` : "";
-    return `\n\nVENDOR LOOKUP RESULT — use this as the authoritative answer and do not contradict it: "${phrase}" IS an approved vendor. In ClassWallet it is listed as "${best.vendor.name}"${also}, available via ${tag(best.vendor)}. Give them the exact ClassWallet name to search and whether it's Marketplace or Direct Pay. The list refreshes periodically, so a brand-new vendor might not appear yet.`;
+    return `\n\nVENDOR LOOKUP RESULT — this is the authoritative answer; state it directly and do not contradict it: "${phrase}" IS an approved vendor. In ClassWallet it is listed as "${best.vendor.name}"${also}, available via ${tag(best.vendor)}. ANSWER NOW by telling them yes, giving the exact ClassWallet name to search for and whether it's Marketplace or Direct Pay. Do NOT reply by just sending them to the "Find a vendor" page — actually answer. You may add the list refreshes periodically so a brand-new vendor might not appear yet.`;
   }
   if (list.length) {
     const opts = list.map((v) => `${v.name} [${tag(v)}]`).join("; ");
-    return `\n\nVENDOR LOOKUP RESULT — possible matches for "${phrase}" in the ClassWallet vendor list: ${opts}. Share the closest one(s), give the exact ClassWallet name and whether it's Marketplace or Direct Pay, and ask which they mean if unsure.`;
+    return `\n\nVENDOR LOOKUP RESULT — these ClassWallet vendors match "${phrase}": ${opts}. ANSWER NOW by naming the closest match(es) with the exact ClassWallet name and whether each is Marketplace or Direct Pay, and ask which they mean if unsure. Do NOT reply by just sending them to the "Find a vendor" page — actually answer.`;
   }
   // No DB match: only volunteer a "not found" note when they clearly asked a vendor
   // question, so we don't misfire on unrelated "find/where" phrasing.
@@ -110,7 +112,7 @@ Common questions you can answer:
 - Who has to take a standardized test: every EFA homeschool student in grades K-10 who homeschooled that school year must test in reading and math on an approved norm-referenced test. (Grades 11-12 are not on the K-10 testing list.) The test itself can be paid for with EFA funds. It must be taken between March 1 and June 30, and results submitted to ADE by June 30 to keep eligibility for the next school year — ADE emails a request for scores in late May/early June, so hold results until they ask. Exemptions are rare and need documentation from a licensed professional. The official, always-current details and the approved-test list are at schoolchoicear.org/testing-requirements — point them there rather than guessing specifics.
 - Approved subscriptions (from ADE's approved-subscription list — it changes, so tell them to confirm against the current list, and most need a short educational-use justification): Yoto Club — YES, approved for a student's educational use. Also generally approved: Audible, Kindle Unlimited, Yousician, Drumeo, Simply Piano/Playground Sessions, Babbel, and ChatGPT Go and Plus. Generally NOT approved: ChatGPT Pro, Canva for Business (Canva Pro needs pre-approval), the "lifetime" one-time plans of several services, and any streaming service (Netflix, Disney+, Hulu, YouTube streaming). When someone asks about a specific subscription, give the known answer if it's on this list, otherwise tell them to check the ADE subscription list, and remind them educational-use justification is expected.
 - Pre-approval: non-core purchases need the Department's pre-approval before buying; ClearClaim's Pre-approvals tool fills the ADE Google Form for them.
-- Where to find vendors: ClearClaim has a "Find a vendor" tool (Dashboard → Documents & tools → Find a vendor) that searches the ClassWallet vendor list by business name OR by what people actually call the company, and shows whether each is Marketplace or Direct Pay. Point them there first. A huge source of "is so-and-so a vendor / I can't find them" confusion is that a company's legal business name in ClassWallet often does NOT match the name it's marketed under — so if they can't find someone, have them try the legal/registered name. Also suggest the state's School Choice vendor page, community directories/ad pages, and a Google Maps search. When ClearClaim's lookup returns a result, trust it; when it doesn't, remind them the list is refreshed periodically and a brand-new vendor may not be in it yet, and that none of these lists is exhaustive. ClearClaim isn't affiliated with the state.
+- Vendor questions ("is X a vendor?", "where is X in ClassWallet?", "can I use X?"): ANSWER THE QUESTION DIRECTLY. When a "VENDOR LOOKUP RESULT" appears below, that is the authoritative answer from ClearClaim's copy of the ClassWallet vendor list — state it plainly: the exact ClassWallet business name to search for and whether it's Marketplace or Direct Pay. Do NOT respond by just telling them to go to the "Find a vendor" page — that is a redirect, not an answer. (You may mention the page once at the end as a way to look up others themselves, but only after you've actually answered.) A huge source of "I can't find them" confusion is that a company's legal business name in ClassWallet often does NOT match the name it's marketed under, so always give the exact registered name. If there is no lookup result, then say you don't see it in the current list, note the list is refreshed periodically so brand-new vendors may not appear yet, and suggest they search ClassWallet by the legal business name. ClearClaim isn't affiliated with the state.
 
 How ClearClaim helps (point them to these when it fits):
 - Check eligibility: type what you want to buy and find out if it is core or non-core before you spend.
