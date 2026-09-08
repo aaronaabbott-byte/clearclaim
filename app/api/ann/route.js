@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { planFrom } from "@/lib/plan";
 import { getStateConfig } from "@/lib/states";
 import { bestVendorMatch, findVendors, scanMessageForVendor } from "@/lib/vendors";
+import { loadItemData, lookupItem, scanMessageForItem, storeList } from "@/lib/itemstores";
 
 // Pull a likely vendor name out of a question like "is Varsity Tutors a vendor?"
 // or "where do I find AOP in classwallet?". Returns the candidate phrase, or "".
@@ -130,6 +131,7 @@ Common questions you can answer:
 - Switching from private school to homeschool: families do NOT have to call or email the office — they can do all of it themselves. Walk them through it: (1) go into your FACTS account and change from private school to homeschool; (2) file a Notice of Intent (NOI) to homeschool online; (3) in ClassWallet, unlink from the private school and link to "Homeschool Do Not Pay." If they're enrolling in a microschool instead, they link the microschool AND link homeschool, and STILL file an NOI — microschool students are legally homeschool students and must follow the homeschool laws, including the NOI. (Switching the other way, homeschool → private, is handled the same self-service way in FACTS/ClassWallet.)
 - Mileage submissions: mileage uses the division's mileage form plus a mileage log; ClearClaim can help assemble the log, and the form comes from the division's website. Remember field-trip mileage draws from the extracurricular cap, other mileage from the transportation cap.
 - Who has to take a standardized test: every EFA homeschool student in grades K-10 who homeschooled that school year must test in reading and math on an approved norm-referenced test. (Grades 11-12 are not on the K-10 testing list.) The test itself can be paid for with EFA funds. It must be taken between March 1 and June 30, and results submitted to ADE by June 30 to keep eligibility for the next school year — ADE emails a request for scores in late May/early June, so hold results until they ask. Exemptions are rare and need documentation from a licensed professional. The official, always-current details and the approved-test list are at schoolchoicear.org/testing-requirements — point them there rather than guessing specifics.
+- "Where can I buy X in ClassWallet?" (e.g. a sewing machine, Cricut, microscope, telescope, or a specific curriculum): when an "ITEM LOOKUP RESULT" appears below, answer directly with the stores it lists and whether each is Direct Pay or Marketplace. For a curriculum, give the store/pathway it names, or say "reimbursement only" if that's what it says. Don't tell them to go hunt — you have the answer.
 - Approved subscriptions (from ADE's approved-subscription list — it changes, so tell them to confirm against the current list, and most need a short educational-use justification): Yoto Club — YES, approved for a student's educational use. Also generally approved: Audible, Kindle Unlimited, Yousician, Drumeo, Simply Piano/Playground Sessions, Babbel, and ChatGPT Go and Plus. Generally NOT approved: ChatGPT Pro, Canva for Business (Canva Pro needs pre-approval), the "lifetime" one-time plans of several services, and any streaming service (Netflix, Disney+, Hulu, YouTube streaming). When someone asks about a specific subscription, give the known answer if it's on this list, otherwise tell them to check the ADE subscription list, and remind them educational-use justification is expected.
 - Pre-approval: non-core purchases need the Department's pre-approval before buying; ClearClaim's Pre-approvals tool fills the ADE Google Form for them.
 - Vendor questions ("is X a vendor?", "where is X in ClassWallet?", "can I use X?"): ANSWER THE QUESTION DIRECTLY. When a "VENDOR LOOKUP RESULT" appears below, that is the authoritative answer from ClearClaim's copy of the ClassWallet vendor list — state it plainly: the exact ClassWallet business name to search for and whether it's Marketplace or Direct Pay. Do NOT respond by just telling them to go to the "Find a vendor" page — that is a redirect, not an answer. (You may mention the page once at the end as a way to look up others themselves, but only after you've actually answered.) A huge source of "I can't find them" confusion is that a company's legal business name in ClassWallet often does NOT match the name it's marketed under, so always give the exact registered name. If there is no lookup result, then say you don't see it in the current list, note the list is refreshed periodically so brand-new vendors may not appear yet, and suggest they search ClassWallet by the legal business name. ClearClaim isn't affiliated with the state.
@@ -168,6 +170,48 @@ function buildSystem(cfg) {
   return cfg?.code === "AR" ? AR_SYSTEM : genericSystem(cfg);
 }
 
+// "Where can I buy X in ClassWallet?" — pull the item out of the question.
+const ITEM_INTENT = /where (?:can|do|could|should|would) (?:i|we|you)|which (?:store|vendor|shop)|what store|who (?:carries|sells|has|stocks)|where in class\s*wallet|find (?:it|them|one) (?:in|on) class\s*wallet|carry|carries/i;
+function extractItemQuery(msg) {
+  const s = (msg || "").trim();
+  if (!s) return "";
+  if (!ITEM_INTENT.test(s)) return "";
+  const pats = [
+    /where (?:can|do|could|should|would) (?:i|we|you) (?:get|buy|find|purchase|order)\s+(?:a |an |the |some |my )?(.+?)(?:\s+(?:in|on|at|from|through)\s+class\s*wallet|\s+in class\s*wallet|\?|$)/i,
+    /(?:which|what) (?:store|vendor|shop)s?\s+(?:has|have|carry|carries|sells?|stocks?)\s+(?:a |an |the |some )?(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\?|$)/i,
+    /who (?:carries|sells|has|stocks)\s+(?:a |an |the |some )?(.+?)(?:\s+(?:in|on)\s+class\s*wallet|\?|$)/i,
+    /where (?:in|on) class\s*wallet (?:can|do|is|are)?\s*(?:i|we|you)?\s*(?:get|buy|find|purchase)?\s*(?:a |an |the |some )?(.+?)(?:\?|$)/i,
+  ];
+  for (const p of pats) {
+    const m = s.match(p);
+    if (m && m[1]) {
+      const phrase = m[1].replace(/^(?:a|an|the|some|my)\s+/i, "").replace(/\s+/g, " ").trim().replace(/[.?!,]+$/, "");
+      if (phrase.length >= 2 && phrase.length <= 60) return phrase;
+    }
+  }
+  return "";
+}
+
+function itemStoreNote(ds, trimmed) {
+  const lastUser = [...trimmed].reverse().find((m) => m.role === "user")?.content || "";
+  const phrase = extractItemQuery(lastUser);
+  let hit = phrase ? lookupItem(ds, phrase) : null;
+  if ((!hit || !hit.confident) && ITEM_INTENT.test(lastUser)) {
+    const scan = scanMessageForItem(ds, lastUser);
+    if (scan) hit = scan;
+  }
+  if (!hit) return "";
+  if (hit.kind === "product") {
+    return `\n\nITEM LOOKUP RESULT — this is the authoritative "where to buy in ClassWallet" answer; give it directly: "${hit.product.item}" can be purchased in ClassWallet from: ${storeList(hit.product.stores)}. Tell them these stores and whether each is Direct Pay or Marketplace. If they want more options than listed, they can also do reimbursement. The list is refreshed from the source sheet, so it may not be exhaustive.`;
+  }
+  const c = hit.curriculum;
+  if (c.reimbursementOnly && !c.carriers) {
+    return `\n\nITEM LOOKUP RESULT — "${c.name}" is REIMBURSEMENT ONLY: no ClassWallet vendor is known to carry it, so the family buys it themselves and submits a reimbursement claim. Say that plainly.`;
+  }
+  const tail = c.reimbursementOnly ? " (Otherwise it's reimbursement-only.)" : " (Available in ClassWallet.)";
+  return `\n\nITEM LOOKUP RESULT — for the curriculum "${c.name}": ${c.carriers}.${tail} Give them that store/pathway directly.`;
+}
+
 export async function POST(request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -190,9 +234,17 @@ export async function POST(request) {
     content: String(m.content || "").slice(0, 4000),
   }));
 
-  // If the latest message is a vendor question, look it up locally and hand Ann
-  // the answer so she can respond precisely instead of guessing.
-  const system = baseSystem + vendorLookupNote(stateConfig, trimmed);
+  // If the latest message is a vendor or "where do I buy X" question, look it up
+  // and hand Ann the answer so she responds precisely instead of guessing. The
+  // item/store data is pulled live from Ann's sheet (cached), so her edits apply
+  // without a redeploy.
+  let system = baseSystem + vendorLookupNote(stateConfig, trimmed);
+  if (stateConfig?.code === "AR") {
+    try {
+      const itemData = await loadItemData();
+      system += itemStoreNote(itemData, trimmed);
+    } catch { /* item lookup is best-effort */ }
+  }
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
