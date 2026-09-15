@@ -88,6 +88,7 @@ export default function ClaimBuilder({
   const [reasoning, setReasoning] = useState(existing?.reasoning || "");
   const [receipts, setReceipts] = useState([]);   // File[] (newly added this session)
   const [payments, setPayments] = useState([]);    // File[] (newly added this session)
+  const [supporting, setSupporting] = useState([]); // File[] — proof of enrollment, curriculum, letters, etc.
   const [keptFiles, setKeptFiles] = useState(Array.isArray(existing?.files) ? existing.files : []); // already-stored {path,kind,name}
   const [vaultPicks, setVaultPicks] = useState([]); // document ids to attach
   const [splitOn, setSplitOn] = useState(false);
@@ -157,6 +158,7 @@ export default function ClaimBuilder({
     return [
       ...receipts.map(f => ({ kind: "Receipt", blob: f, name: f.name })),
       ...payments.map(f => ({ kind: "Bank charge", blob: f, name: f.name })),
+      ...supporting.map(f => ({ kind: "Supporting doc", blob: f, name: f.name })),
     ];
   }
 
@@ -529,6 +531,12 @@ export default function ClaimBuilder({
           )}
         </div>
       )}
+
+      <div style={{ marginTop: 12 }}>
+        <label>Other supporting documents (optional)</label>
+        <FileField files={supporting} onAdd={list => addFiles(setSupporting, list)} onRemove={i => removeAt(setSupporting, i)}
+          hint="Anything else the reviewer needs — proof of enrollment or lesson participation, the curriculum/course, an enrollment letter, a pre-approval, or a mileage log. Screenshot or download it and add it here; it's flattened into the same packet." />
+      </div>
 
       {/* Attach from your vault: reusable docs (annual pre-approval, diagnosis, etc.) */}
       {editing && keptFiles.length > 0 && (
