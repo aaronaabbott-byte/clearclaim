@@ -64,7 +64,9 @@ export default function DevicesManager({ userId, devices = [], kids = [] }) {
   const [editId, setEditId] = useState(null);     // which device is being edited
   const [editForm, setEditForm] = useState(blankForm());
   const [kind, setKind] = useState("Receipt");
+  const [addKind, setAddKind] = useState("Receipt");
   const fileRef = useRef(null);
+  const addFileRef = useRef(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setEdit = (k, v) => setEditForm(f => ({ ...f, [k]: v }));
@@ -81,8 +83,22 @@ export default function DevicesManager({ userId, devices = [], kids = [] }) {
     e.preventDefault(); setErr(""); setMsg("");
     if (!form.name.trim()) { setErr("Give the device a name."); return; }
     setBusy(true);
-    const { error } = await supabase.from("devices").insert({ user_id: userId, ...row(form) });
+    const { data: created, error } = await supabase.from("devices")
+      .insert({ user_id: userId, ...row(form) }).select("id").single();
     if (error) { setErr("Couldn't save: " + error.message); setBusy(false); return; }
+    // Attach any file chosen right here in the add form (e.g. the purchase receipt).
+    const chosen = addFileRef.current?.files;
+    if (chosen && chosen.length) {
+      const added = [];
+      for (const file of Array.from(chosen)) {
+        const safe = file.name.replace(/[^\w.\-]+/g, "_");
+        const path = `${userId}/devices/${created.id}/${Date.now()}-${safe}`;
+        const { error: e2 } = await supabase.storage.from("documents").upload(path, file, { upsert: false });
+        if (!e2) added.push({ path, kind: addKind, name: file.name });
+      }
+      if (added.length) await supabase.from("devices").update({ files: added }).eq("id", created.id);
+      if (addFileRef.current) addFileRef.current.value = "";
+    }
     setForm(blankForm()); setMsg("Device added."); setBusy(false); router.refresh();
   }
 
@@ -163,7 +179,16 @@ export default function DevicesManager({ userId, devices = [], kids = [] }) {
                 {kids.map(k => <option key={k.id} value={k.id}>{k.first_name}</option>)}
               </select>
             </div>
-            <div />
+            <div><label>Document type</label>
+              <select value={addKind} onChange={e => setAddKind(e.target.value)}>
+                {FILE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <label>Attach a document now (optional) — e.g. the purchase receipt</label>
+            <input ref={addFileRef} type="file" accept="image/*,.heic,.heif,application/pdf" multiple />
+            <p className="finenote" style={{ marginTop: 4 }}>You can add the protection-plan contract and more later from the device's Files panel.</p>
           </div>
           <button className="primary" disabled={busy} style={{ marginTop: 12 }}>{busy ? "Saving…" : "Add device"}</button>
           {err && <p style={{ color: "var(--red)", fontSize: 13 }}>{err}</p>}
