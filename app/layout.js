@@ -10,8 +10,11 @@ export default function RootLayout({ children }) {
         {children}
         <footer className="sitefoot">
           ClearClaim is an independent tool and is not affiliated with, endorsed by, or connected to
-          ClassWallet, the Arkansas Department of Education, or any state EFA or ESA program. It does not
-          guarantee approval or reimbursement and is not legal, tax, or financial advice.{" "}
+          ClassWallet, the Arkansas Department of Education, or any state EFA or ESA program. It's built to
+          help you prepare stronger submissions and reduce rejections, but its guidance — including AI features
+          like Ask Ann and the eligibility check — can be incomplete or wrong, so always confirm current rules
+          with your program before you buy or submit. ClearClaim does not guarantee approval or reimbursement
+          and is not legal, tax, or financial advice.{" "}
           <Link href="/terms">Terms & full disclaimer</Link>{" · "}<Link href="/privacy">Privacy</Link>
         </footer>
       </body>

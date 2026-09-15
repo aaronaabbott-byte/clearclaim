@@ -7,7 +7,14 @@ import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
 import { checkClaimAZ } from "@/lib/states/az-rules";
 import { checkClaimUT, utCaps, utCategoryCapKey } from "@/lib/states/ut-rules";
 import { getStateConfig } from "@/lib/states";
+import { diagnoseDenial, VERDICT_LABEL } from "@/lib/denials";
 const STATE_CHECKERS = { AZ: checkClaimAZ, UT: checkClaimUT };
+const DX_STYLE = {
+  fixable: { bg: "#eef7f1", bd: "#bfe0cd", fg: "#1f6b45" },
+  conditional: { bg: "#fdf7e8", bd: "#e7d3a6", fg: "#8a6d1a" },
+  ineligible: { bg: "#fbeeee", bd: "#e3b7b3", fg: "#9a2b25" },
+  unclear: { bg: "#eef2f8", bd: "#c3d6ea", fg: "#274b76" },
+};
 const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
 const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 import { buildPacketPdfs } from "@/lib/packet";
@@ -60,6 +67,11 @@ export default function ClaimBuilder({
   const platform = getStateConfig(state)?.platform || "the portal";
   const showCaps = !!(features.techCap || features.percentCaps);
   const editing = !!existing;
+  // If this saved claim was marked denied with a reason, diagnose it so the edit
+  // view can show what to fix right up top.
+  const denialDx = (editing && existing?.outcome === "denied" && (existing?.outcome_reason || "").trim())
+    ? diagnoseDenial(existing.outcome_reason, { items: existing.items, category: existing.category })
+    : null;
   const router = useRouter();
   const supabase = createClient();
 
@@ -401,6 +413,31 @@ export default function ClaimBuilder({
           ? "Make your changes and re-download the packet. Your claim is saved here and stays editable for 30 days — come back any time to add more."
           : "Claims you save stay here and are editable for 30 days, so you can step away and come back to add more or re-download before you submit."}
       </p>
+
+      {denialDx && denialDx.matched.length > 0 && (() => {
+        const dv = DX_STYLE[denialDx.verdict] || DX_STYLE.unclear;
+        return (
+          <div style={{ marginBottom: 12, background: dv.bg, border: `1px solid ${dv.bd}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div className="sans" style={{ fontWeight: 800, color: dv.fg, fontSize: 14.5 }}>
+              {denialDx.verdict === "fixable" ? "✓ " : denialDx.verdict === "ineligible" ? "✕ " : "! "}
+              This claim was denied — {VERDICT_LABEL[denialDx.verdict]}
+            </div>
+            {existing?.outcome_reason && (
+              <p className="finenote" style={{ margin: "4px 0 8px" }}>Reviewer said: “{existing.outcome_reason}”</p>
+            )}
+            <div style={{ display: "grid", gap: 6 }}>
+              {denialDx.matched.map((m, i) => (
+                <div key={i} className="sans" style={{ fontSize: 13.5, color: "#3c4048", lineHeight: 1.5 }}>
+                  <b>{m.title}.</b> {m.fix}
+                </div>
+              ))}
+            </div>
+            {denialDx.verdict === "ineligible" && (
+              <p className="finenote" style={{ marginTop: 8 }}>Heads up: this looks like the item itself isn't reimbursable, so editing and resubmitting may not change the outcome.</p>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="row">
         <div><label>Student</label>

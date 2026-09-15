@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -42,6 +43,11 @@ export default function ClaimOutcome({ claim }) {
         <button type="button" className="sans" onClick={() => setOpen(true)} style={{ fontSize: 12, padding: "4px 10px" }}>
           {badge ? `${badge[0]} · edit` : "Report outcome"}
         </button>
+        {claim.outcome === "denied" && (
+          <Link href={`/dashboard/claims/${claim.id}`}>
+            <button type="button" className="sans primary" style={{ fontSize: 12, padding: "4px 10px" }}>Help me fix this</button>
+          </Link>
+        )}
         <button type="button" className="sans" disabled={busy} onClick={remove} title="Delete claim"
           style={{ fontSize: 12, padding: "4px 9px", color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
       </span>

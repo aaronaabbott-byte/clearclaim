@@ -127,8 +127,9 @@ export default function Eligibility({ kids, ruleVersion }) {
           </div>
 
           <p className="finenote" style={{ marginTop: 14 }}>
-            Classification is guidance based on the published rule text ({ruleVersion}). It is not a decision.
-            The Department makes the final determination, and there is no guarantee of approval or reimbursement.
+            This is an automated reading based on the published rule text ({ruleVersion}) — it can be wrong or
+            incomplete, so double-check anything you're unsure about. It is not a decision: the Department makes
+            the final determination, and there is no guarantee of approval or reimbursement.
           </p>
         </div>
       )}
