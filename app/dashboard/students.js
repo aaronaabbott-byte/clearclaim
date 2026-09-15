@@ -114,6 +114,7 @@ export function Bar({ email, settings = true, admin = false, providerView = fals
     items.push({ label: "Start a claim", href: "/dashboard/claims/new" });
     if (feat.coreNonCore) items.push({ label: "Check eligibility", href: "/dashboard/eligibility" });
     items.push({ label: "Documents", href: "/dashboard/documents" });
+    items.push({ label: "Devices & plans", href: "/dashboard/devices" });
     if (feat.preapprovalTool) items.push({ label: "Pre-approvals", href: "/dashboard/preapproval/new" });
     if (feat.vendorDirectory) items.push({ label: "Find a vendor", href: "/dashboard/vendors" });
     if (feat.denialFixer) items.push({ label: "Fix a denied claim", href: "/dashboard/fix" });

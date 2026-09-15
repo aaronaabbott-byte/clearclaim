@@ -242,6 +242,7 @@ export default async function Dashboard() {
             <h2 style={{ margin: 0 }}>Documents & tools</h2>
             <span className="spacer" />
             <Link href="/dashboard/documents"><button>Document library</button></Link>
+            <Link href="/dashboard/devices"><button>Devices & plans</button></Link>
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
             <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
             <Link href="/dashboard/submit-steps"><button>How to submit on {stateConfig?.platform || "your program's portal"}</button></Link>
