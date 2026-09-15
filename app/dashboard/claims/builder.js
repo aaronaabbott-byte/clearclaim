@@ -661,7 +661,15 @@ export default function ClaimBuilder({
       </div>
 
       {err && <p style={{ color: "var(--red)", fontSize: 13 }}>{err}</p>}
-      {msg && <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>}
+      {msg && (/split into|upload all|each under/i.test(msg)
+        ? (
+          <p className="sans" style={{
+            color: "var(--red)", fontSize: 15.5, fontWeight: 700, lineHeight: 1.45, marginTop: 10,
+            background: "#fbeeee", border: "1px solid #e3b7b3", borderRadius: 10, padding: "11px 13px",
+          }}>⚠️ {msg}</p>
+        )
+        : <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>
+      )}
 
       <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
         <button className="primary" disabled={busy} onClick={saveAndBuild}>
