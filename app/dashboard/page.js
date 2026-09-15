@@ -176,10 +176,14 @@ export default async function Dashboard() {
             <span className="spacer" />
             <Link href="/dashboard/claims/new"><button className="primary">+ Start a claim</button></Link>
           </div>
+          {claims && claims.length > 0 && (
+            <p className="finenote" style={{ marginTop: 6 }}>Tap a claim to reopen and edit it — add more or re-download the packet. Saved claims stay editable for 30 days.</p>
+          )}
           {(!claims || claims.length === 0) ? (
             <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
               No claims yet. Start one to attach the receipt and bank charge, auto-draft the reasoning,
-              run the rules check, and download a single PDF packet ready to submit.
+              run the rules check, and download a single PDF packet ready to submit. Saved claims stay here and
+              are editable for 30 days, so you can step away and come back to finish.
             </p>
           ) : (
             <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
@@ -187,13 +191,14 @@ export default async function Dashboard() {
                 const [label, color] = STATUS[c.status] || STATUS.draft;
                 return (
                   <div className="kid" key={c.id} style={{ alignItems: "center", flexWrap: "wrap" }}>
-                    <div style={{ flex: 1, minWidth: 180 }}>
+                    <Link href={`/dashboard/claims/${c.id}`} style={{ flex: 1, minWidth: 180, textDecoration: "none", color: "inherit" }}>
                       <b>{c.vendor || "Claim"}</b> · {money(c.amount)}
                       <div className="muted sans" style={{ fontSize: 13 }}>
                         {kidName(c.kid_id)}{c.date ? ` · ${c.date}` : ""}{c.category ? ` · ${c.category}` : ""}
                       </div>
-                    </div>
+                    </Link>
                     <span className="sans" style={{ fontSize: 12.5, fontWeight: 700, color }}>{label}</span>
+                    <Link href={`/dashboard/claims/${c.id}`}><button className="sans" style={{ fontSize: 12, padding: "4px 10px" }}>Edit</button></Link>
                     <ClaimOutcome claim={c} />
                   </div>
                 );

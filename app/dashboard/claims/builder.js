@@ -49,6 +49,7 @@ function FileField({ files, onAdd, onRemove, hint }) {
 
 export default function ClaimBuilder({
   kids, userId, claims = [], documents = [], initialItems = "", initialNote = "", prefill = {}, premium = false,
+  existing = null,
   state = "AR",
   categories = CATEGORIES,
   pathways = PATHWAYS,
@@ -58,21 +59,24 @@ export default function ClaimBuilder({
   const runCheck = STATE_CHECKERS[state] || checkClaim;
   const platform = getStateConfig(state)?.platform || "the portal";
   const showCaps = !!(features.techCap || features.percentCaps);
+  const editing = !!existing;
   const router = useRouter();
   const supabase = createClient();
 
-  const [kidId, setKidId] = useState((prefill.kidId && kids.some(k => k.id === prefill.kidId)) ? prefill.kidId : (kids[0]?.id || ""));
-  const [pathway, setPathway] = useState("reimbursement");
-  const [vendor, setVendor] = useState(prefill.vendor || "");
-  const [amount, setAmount] = useState(prefill.amount || "");
-  const [basePrice, setBasePrice] = useState("");   // tech cap counts base price (pre-tax/shipping)
-  const [date, setDate] = useState("");
-  const [category, setCategory] = useState(prefill.category || "");
-  const [items, setItems] = useState(initialItems);
-  const [purpose, setPurpose] = useState(initialNote);
-  const [reasoning, setReasoning] = useState("");
-  const [receipts, setReceipts] = useState([]);   // File[]
-  const [payments, setPayments] = useState([]);    // File[]
+  const [kidId, setKidId] = useState(
+    existing?.kid_id || ((prefill.kidId && kids.some(k => k.id === prefill.kidId)) ? prefill.kidId : (kids[0]?.id || "")));
+  const [pathway, setPathway] = useState(existing?.pathway || "reimbursement");
+  const [vendor, setVendor] = useState(existing?.vendor || prefill.vendor || "");
+  const [amount, setAmount] = useState(existing?.amount != null ? String(existing.amount) : (prefill.amount || ""));
+  const [basePrice, setBasePrice] = useState(existing?.base_price != null ? String(existing.base_price) : "");
+  const [date, setDate] = useState(existing?.date || "");
+  const [category, setCategory] = useState(existing?.category || prefill.category || "");
+  const [items, setItems] = useState(existing?.items || initialItems);
+  const [purpose, setPurpose] = useState(existing?.purpose || initialNote);
+  const [reasoning, setReasoning] = useState(existing?.reasoning || "");
+  const [receipts, setReceipts] = useState([]);   // File[] (newly added this session)
+  const [payments, setPayments] = useState([]);    // File[] (newly added this session)
+  const [keptFiles, setKeptFiles] = useState(Array.isArray(existing?.files) ? existing.files : []); // already-stored {path,kind,name}
   const [vaultPicks, setVaultPicks] = useState([]); // document ids to attach
   const [splitOn, setSplitOn] = useState(false);
   const [splitIds, setSplitIds] = useState([]);     // kid ids sharing this receipt
@@ -213,7 +217,22 @@ export default function ClaimBuilder({
     return total > 1 ? `${base}-file${i + 1}of${total}.pdf` : `${base}.pdf`;
   }
 
-  async function gatherImages() { return [...images(), ...await vaultImages()]; }
+  // Already-stored files kept on an edited claim, downloaded so they can be
+  // re-flattened into the updated packet.
+  async function keptImages() {
+    const out = [];
+    for (const f of keptFiles) {
+      if (!f?.path) continue;
+      const { data, error } = await supabase.storage.from("documents").download(f.path);
+      if (!error && data) out.push({ kind: f.kind || "Document", blob: data, name: f.name || "file" });
+    }
+    return out;
+  }
+  const removeKept = (i) => setKeptFiles(prev => prev.filter((_, idx) => idx !== i));
+
+  async function gatherImages() {
+    return [...(editing ? await keptImages() : []), ...images(), ...await vaultImages()];
+  }
 
   // The claim(s) to produce. One per student when splitting, else just this one.
   // Build the claim(s), each carrying its own state-correct pre-submission
@@ -256,7 +275,64 @@ export default function ClaimBuilder({
       : (files > 1 ? `Your packet was split into ${files} files so each stays under ${platform}'s page limit. Upload all ${files} to the same submission.` : ""));
   }
 
+  // Editing an existing saved claim: update the row in place, keep the files the
+  // parent didn't remove, upload any new ones, and rebuild the packet. No split
+  // here — an edit works on the one saved claim.
+  async function saveEdit() {
+    setErr(""); setMsg(""); setBusy(true);
+    try {
+      if (!kidId) { setErr("Pick a student."); setBusy(false); return; }
+      if (!(+amount > 0)) { setErr("Enter an amount."); setBusy(false); return; }
+      if (!category) { setErr("Pick a category."); setBusy(false); return; }
+      const finalReasoning = reasoning || suggested;
+      const { error: upErr } = await supabase.from("claims").update({
+        kid_id: kidId, vendor, pathway, amount: +amount, base_price, date: date || null,
+        category, items, purpose, reasoning: finalReasoning,
+        status: blocking ? "draft" : "ready",
+      }).eq("id", existing.id);
+      if (upErr) { setErr("Could not save changes: " + upErr.message); setBusy(false); return; }
+
+      // Upload the newly added files; keep the ones still in keptFiles.
+      const newImgs = [...images(), ...await vaultImages()];
+      const files = [...keptFiles];
+      let storeFail = false;
+      for (const im of newImgs) {
+        const path = `${userId}/${existing.id}/${Date.now()}-${im.name}`.replace(/\s+/g, "_");
+        const { error: e } = await supabase.storage.from("documents").upload(path, im.blob, { upsert: false });
+        if (!e) files.push({ path, kind: im.kind, name: im.name }); else storeFail = true;
+      }
+      await supabase.from("claims").update({ files }).eq("id", existing.id);
+
+      // Rebuild the packet from kept + new files.
+      const allImages = await gatherImages();
+      const v = withChecks({ ...claim, kid_id: kidId, amount: +amount, base_price, reasoning: finalReasoning, purpose, split_group: null, split_note: null });
+      const docs = await buildPacketPdfs(v, kid, allImages);
+      docs.forEach((d, i) => d.save(packetNameFor(kid?.first_name, i, docs.length)));
+
+      setMsg("Saved your changes and downloaded the updated packet." + (storeFail ? " (Some files couldn't be stored — check Storage policies.)" : ""));
+      router.refresh();
+      setTimeout(() => router.push("/dashboard"), 1400);
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
+    setBusy(false);
+  }
+
+  async function deleteClaim() {
+    if (!editing) return;
+    if (!window.confirm("Delete this claim? This can't be undone.")) return;
+    setBusy(true);
+    try {
+      const paths = (Array.isArray(existing.files) ? existing.files : []).map(f => f?.path).filter(Boolean);
+      if (paths.length) await supabase.storage.from("documents").remove(paths);
+    } catch { /* file cleanup is best-effort */ }
+    const { error } = await supabase.from("claims").delete().eq("id", existing.id);
+    if (error) { setErr("Could not delete: " + error.message); setBusy(false); return; }
+    router.push("/dashboard"); router.refresh();
+  }
+
   async function saveAndBuild() {
+    if (editing) return saveEdit();
     setErr(""); setMsg(""); setBusy(true);
     try {
       if (!kidId) { setErr("Pick a student."); setBusy(false); return; }
@@ -315,7 +391,12 @@ export default function ClaimBuilder({
 
   return (
     <div className="card">
-      <h2>New claim</h2>
+      <h2>{editing ? "Edit claim" : "New claim"}</h2>
+      <p className="finenote" style={{ marginTop: -6, marginBottom: 10, background: "#f4f7fb", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }}>
+        {editing
+          ? "Make your changes and re-download the packet. Your claim is saved here and stays editable for 30 days — come back any time to add more."
+          : "Claims you save stay here and are editable for 30 days, so you can step away and come back to add more or re-download before you submit."}
+      </p>
 
       <div className="row">
         <div><label>Student</label>
@@ -396,6 +477,23 @@ export default function ClaimBuilder({
       )}
 
       {/* Attach from your vault: reusable docs (annual pre-approval, diagnosis, etc.) */}
+      {editing && keptFiles.length > 0 && (
+        <div style={{ marginTop: 12, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+          <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Already attached</div>
+          <p className="finenote" style={{ marginTop: 2, marginBottom: 8 }}>
+            These files are saved on this claim and will be included in the packet. Remove any you don't want, or add more above.
+          </p>
+          <div style={{ display: "grid", gap: 6 }}>
+            {keptFiles.map((f, i) => (
+              <div key={i} className="sans" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5 }}>
+                <span style={{ flex: 1, minWidth: 0 }}><b>{f.name || "file"}</b>{f.kind ? <span className="muted"> · {f.kind}</span> : null}</span>
+                <button type="button" className="sans" style={{ fontSize: 12, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={() => removeKept(i)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {vaultDocs.length > 0 && (
         <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
           <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Attach from your vault</div>
@@ -414,8 +512,8 @@ export default function ClaimBuilder({
         </div>
       )}
 
-      {/* Split reimbursement across funded students (Arkansas-style caps only) */}
-      {features.splitReimbursement && kids.length > 1 && pathway !== "directpay" && (
+      {/* Split reimbursement across funded students (Arkansas-style caps only). Not shown when editing a saved claim. */}
+      {!editing && features.splitReimbursement && kids.length > 1 && pathway !== "directpay" && (
         <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
           <label className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontWeight: 700, fontSize: 13, color: "var(--navy)", cursor: "pointer" }}>
             <input type="checkbox" checked={splitOn} onChange={e => { setSplitOn(e.target.checked); if (e.target.checked && !splitIds.length) setSplitIds([kidId]); }} style={{ width: 16, height: 16 }} />
@@ -567,9 +665,10 @@ export default function ClaimBuilder({
 
       <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
         <button className="primary" disabled={busy} onClick={saveAndBuild}>
-          {busy ? "Working…" : "Save claim & download packet"}
+          {busy ? "Working…" : (editing ? "Save changes & download packet" : "Save claim & download packet")}
         </button>
         <button type="button" disabled={busy} onClick={downloadPacket}>Download packet only</button>
+        {editing && <button type="button" disabled={busy} onClick={deleteClaim} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete claim</button>}
         <button type="button" onClick={() => router.push("/dashboard")} style={{ marginLeft: "auto" }}>Cancel</button>
       </div>
     </div>
