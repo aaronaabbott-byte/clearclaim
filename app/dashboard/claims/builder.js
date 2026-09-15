@@ -95,6 +95,10 @@ export default function ClaimBuilder({
   // while parent-name receipts are generally fine for physical supplies.
   const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson|tuition|therapy/i.test(category || "");
 
+  // Mileage / travel claims are the classic "build it over the month" case:
+  // keep one claim open and add each trip's receipt as you go, then submit once.
+  const mileageClaim = /(travel|mileage|transportation|field\s*trip)/i.test([category, items, purpose].join(" "));
+
   const techCat = isTechCategory(category) && features.techCap;
   const base_price = techCat && Number(basePrice) > 0 ? Number(basePrice) : null;
   const claim = { vendor, pathway, amount, base_price, date, category, items, purpose, reasoning,
@@ -452,6 +456,19 @@ export default function ClaimBuilder({
               <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
                 This reflects what families report, not a rule in 6 CAR Part 35. The Department makes the final call.
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mileageClaim && (
+        <div style={{ marginTop: 12, border: "1px solid #cfe0d6", borderRadius: 12, padding: "11px 14px", background: "#f1f7f3" }}>
+          <div className="sans" style={{ display: "grid", gridTemplateColumns: "18px 1fr", gap: 8, fontSize: 13, alignItems: "start" }}>
+            <span aria-hidden="true">🚗</span>
+            <div style={{ color: "#33473c", lineHeight: 1.5 }}>
+              <b>Building up mileage for the month?</b> Save this claim and add each trip's receipt and your mileage log as you go —
+              it stays right here and editable for 30 days. When the month's done, reopen it, re-download the packet, and submit once.
+              {" "}<span className="muted">Remember: field-trip mileage comes out of the extracurricular cap; other approved travel uses the transportation cap.</span>
             </div>
           </div>
         </div>
