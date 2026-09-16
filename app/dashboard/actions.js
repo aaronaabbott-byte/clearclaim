@@ -11,12 +11,15 @@ export async function addKid(formData) {
   const name = (formData.get("first_name") || "").trim();
   if (!name) return;
   // Free plan is limited to one student; adding more needs the Family plan.
+  // Arkansas families get Family free, so include the account's state in the check.
   const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();
-  if (!planFrom(ent).family) {
+  const { data: prof } = await supabase.from("profiles").select("state").eq("user_id", user.id).single();
+  if (!planFrom(ent, prof?.state).family) {
     const { count } = await supabase.from("kids").select("id", { count: "exact", head: true });
     if ((count || 0) >= FREE_STUDENTS) redirect("/upgrade");
   }
-  await supabase.from("kids").insert({
+  // Core columns that have always existed.
+  const base = {
     user_id: user.id,
     first_name: name,
     grade: formData.get("grade") || null,
@@ -24,10 +27,20 @@ export async function addKid(formData) {
     school_name: setting === "homeschool" ? null : (formData.get("school_name") || null),
     subjects: formData.get("subjects") || null,
     funding_tier: formData.get("funding_tier") || "standard",
+  };
+  // Columns added by later migrations. If one of these migrations hasn't been
+  // run on this database, inserting its column throws "column ... does not
+  // exist" and the whole insert fails. So we try the full insert, and if it
+  // errors we retry with just the core columns — the student still gets added
+  // rather than silently failing.
+  const extras = {
     program_start_year: parseInt(formData.get("program_start_year"), 10) || null,
     prior_tech: (formData.get("prior_tech") || "").trim() || null,
     award_amount: Number(formData.get("award_amount")) || null,
-  });
+  };
+  let { error } = await supabase.from("kids").insert({ ...base, ...extras });
+  if (error) ({ error } = await supabase.from("kids").insert(base));
+  if (error) throw new Error("Could not add student: " + error.message);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");
 }
@@ -37,16 +50,22 @@ export async function updateKid(formData) {
   const setting = formData.get("setting");
   const name = (formData.get("first_name") || "").trim();
   if (!name) return;
-  await supabase.from("kids").update({
+  const id = formData.get("id");
+  const base = {
     first_name: name,
     grade: formData.get("grade") || null,
     setting,
     school_name: setting === "homeschool" ? null : (formData.get("school_name") || null),
     subjects: formData.get("subjects") || null,
     funding_tier: formData.get("funding_tier") || "standard",
+  };
+  const extras = {
     program_start_year: parseInt(formData.get("program_start_year"), 10) || null,
     prior_tech: (formData.get("prior_tech") || "").trim() || null,
-  }).eq("id", formData.get("id"));
+  };
+  let { error } = await supabase.from("kids").update({ ...base, ...extras }).eq("id", id);
+  if (error) ({ error } = await supabase.from("kids").update(base).eq("id", id));
+  if (error) throw new Error("Could not save student: " + error.message);
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");
 }
