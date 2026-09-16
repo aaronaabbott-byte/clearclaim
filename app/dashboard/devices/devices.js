@@ -62,6 +62,7 @@ export default function DevicesManager({ userId, devices = [], kids = [] }) {
   const [err, setErr] = useState("");
   const [openId, setOpenId] = useState(null);     // which device's files panel is open
   const [editId, setEditId] = useState(null);     // which device is being edited
+  const [detailsId, setDetailsId] = useState(null); // which device's read-only details are shown
   const [editForm, setEditForm] = useState(blankForm());
   const [kind, setKind] = useState("Receipt");
   const [addKind, setAddKind] = useState("Receipt");
@@ -225,6 +226,9 @@ export default function DevicesManager({ userId, devices = [], kids = [] }) {
                   </div>
 
                   <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => setDetailsId(detailsId === d.id ? null : d.id)}>
+                      {detailsId === d.id ? "Hide details" : "View details"}
+                    </button>
                     <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => setOpenId(openId === d.id ? null : d.id)}>
                       {openId === d.id ? "Hide files" : `Files (${files.length})`}
                     </button>
@@ -242,6 +246,34 @@ export default function DevicesManager({ userId, devices = [], kids = [] }) {
                     <button type="button" className="sans" disabled={busy} onClick={() => removeDevice(d)}
                       style={{ fontSize: 12.5, color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
                   </div>
+
+                  {detailsId === d.id && (() => {
+                    const rows = [
+                      ["Device", d.name],
+                      ["Student", kidName(d.kid_id)],
+                      ["Serial #", d.serial],
+                      ["Purchase date", d.purchase_date],
+                      ["Purchase price", d.purchase_price != null ? money(d.purchase_price) : ""],
+                      ["Protection plan", d.plan_provider],
+                      ["Plan cost (out of pocket)", d.plan_cost != null ? money(d.plan_cost) : ""],
+                      ["Coverage ends", d.plan_end],
+                      ["File a claim", d.plan_contact],
+                      ["Notes", d.notes],
+                    ].filter(r => r[1]);
+                    return (
+                      <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                        <div className="sans" style={{ display: "grid", gridTemplateColumns: "180px 1fr", rowGap: 7, columnGap: 12, fontSize: 13.5 }}>
+                          {rows.map(([label, value]) => (
+                            <div key={label} style={{ display: "contents" }}>
+                              <div className="muted" style={{ fontWeight: 700 }}>{label}</div>
+                              <div style={{ color: "var(--ink)", wordBreak: "break-word" }}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="finenote" style={{ marginTop: 10 }}>Protection plans are paid out of pocket and aren't EFA-eligible — stored here for your records only.</p>
+                      </div>
+                    );
+                  })()}
 
                   {editId === d.id && (
                     <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
