@@ -15,7 +15,15 @@ export default function AdminRow({ u }) {
   const [planMonths, setPlanMonths] = useState("12");
 
   const active = (d) => d && String(d) >= new Date().toISOString().slice(0, 10);
-  const planLabel = [active(u.family_until) && `Family→${u.family_until}`, active(u.provider_until) && `Provider→${u.provider_until}`].filter(Boolean).join(" · ") || "Free";
+  // An account has full Family access if it's paid (family_until), flagged
+  // free_family, or in Arkansas (which is free-Family). Show that instead of a
+  // misleading "Free" — a truly limited free account is none of those.
+  const freeFamily = !active(u.family_until) && (u.free_family || (u.state || "AR").toUpperCase() === "AR");
+  const planLabel = [
+    active(u.family_until) && `Family→${u.family_until}`,
+    freeFamily && "Family (free · AR)",
+    active(u.provider_until) && `Provider→${u.provider_until}`,
+  ].filter(Boolean).join(" · ") || "Free (limited)";
 
   async function saveGrant() {
     setBusy(true); setNote(null);
@@ -74,7 +82,7 @@ export default function AdminRow({ u }) {
             </div>
           )}
           <div className="muted sans" style={{ fontSize: 12, marginTop: 3 }}>
-            <span style={{ color: planLabel === "Free" ? "var(--muted)" : "var(--teal)", fontWeight: 700 }}>Plan: {planLabel}</span>
+            <span style={{ color: planLabel.startsWith("Free") ? "var(--muted)" : "var(--teal)", fontWeight: 700 }}>Plan: {planLabel}</span>
             {" · "}Last access: <b style={{ color: "var(--ink)" }}>{datetime(u.last_sign_in_at)}</b> · joined {date(u.created_at)}
           </div>
         </div>
