@@ -51,7 +51,7 @@ export default async function Admin() {
     { data: classes }, { data: invoices }, { data: syllabi }, { data: pItems },
     { data: ents }, { data: codes }, { data: documents }, { data: devices }] = await Promise.all([
     admin.from("kids").select("user_id,created_at"),
-    admin.from("claims").select("user_id,created_at,status"),
+    admin.from("claims").select("user_id,created_at,status,outcome"),
     admin.from("preapprovals").select("user_id,created_at"),
     admin.from("profiles").select("user_id,is_parent,is_provider,state"),
     admin.from("classes").select("user_id"),
@@ -134,6 +134,21 @@ export default async function Admin() {
     documents: (documents || []).length,
     syllabi: (syllabi || []).length,
   };
+  // Claims by status, and a 7-day submission trend.
+  const statusOf = (c) => c.outcome === "approved" ? "approved" : c.outcome === "denied" ? "denied" : c.status === "draft" ? "draft" : "pending";
+  const sb = { draft: 0, pending: 0, approved: 0, denied: 0 };
+  for (const c of claims || []) sb[statusOf(c)]++;
+  stats.approved = sb.approved; stats.denied = sb.denied; stats.pending = sb.pending; stats.draft = sb.draft;
+  const days = [];
+  for (let i = 6; i >= 0; i--) days.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
+  const trendMap = {}; days.forEach(d => (trendMap[d] = 0));
+  for (const c of claims || []) { const d = String(c.created_at || "").slice(0, 10); if (d in trendMap) trendMap[d]++; }
+  const trend = days.map(d => ({ date: d, count: trendMap[d] }));
+  const trendMax = Math.max(1, ...trend.map(t => t.count));
+  const Pill = ({ label, n, color }) => (
+    <span className="sans" style={{ fontSize: 12.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, background: color.bg, color: color.fg, border: `1px solid ${color.bd}` }}>{label}: {n.toLocaleString()}</span>
+  );
+
   const Stat = ({ label, value, sub }) => (
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", background: "#fbfbfc" }}>
       <div className="sans" style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".02em" }}>{label}</div>
@@ -149,7 +164,7 @@ export default async function Admin() {
           <h2 style={{ margin: 0 }}>Usage</h2>
           <span className="muted sans" style={{ fontSize: 13 }}>live snapshot</span>
           <span className="spacer" style={{ flex: 1 }} />
-          <StatsExport stats={stats} accounts={users} />
+          <StatsExport stats={stats} accounts={users} trend={trend} />
         </div>
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
           <Stat label="Accounts" value={stats.accounts} sub={`${stats.newToday} new today · ${stats.newWeek} this week`} />
@@ -165,7 +180,28 @@ export default async function Admin() {
           <Stat label="Documents" value={stats.documents} />
           <Stat label="Syllabi" value={stats.syllabi} />
         </div>
-        <p className="muted sans" style={{ fontSize: 12, marginTop: 10 }}>"Today" and "this week" are UTC. "Activated" = parent accounts that have built at least one claim.</p>
+        <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span className="sans" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--navy)" }}>Claims by status:</span>
+          <Pill label="Approved" n={sb.approved} color={{ bg: "#eef7f1", bd: "#bfe0cd", fg: "#1f6b45" }} />
+          <Pill label="Denied" n={sb.denied} color={{ bg: "#fbeeee", bd: "#e3b7b3", fg: "#9a2b25" }} />
+          <Pill label="Pending" n={sb.pending} color={{ bg: "#fdf7e8", bd: "#e7d3a6", fg: "#8a6d1a" }} />
+          <Pill label="Draft" n={sb.draft} color={{ bg: "#eef2f8", bd: "#c3d6ea", fg: "#274b76" }} />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div className="sans" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--navy)", marginBottom: 8 }}>Claims created — last 7 days</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 92 }}>
+            {trend.map(t => (
+              <div key={t.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }}>
+                <div className="sans" style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 3 }}>{t.count}</div>
+                <div style={{ width: "100%", maxWidth: 40, height: `${Math.round((t.count / trendMax) * 64)}px`, minHeight: t.count > 0 ? 4 : 0, background: "var(--navy2)", borderRadius: "5px 5px 0 0" }} />
+                <div className="sans" style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>{t.date.slice(5)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="muted sans" style={{ fontSize: 12, marginTop: 12 }}>"Today", "this week", and the daily chart are UTC. "Activated" = parent accounts that have built at least one claim. Approved/Denied come from parent-reported outcomes; Pending = submitted, not yet reported; Draft = not finished.</p>
       </div>
 
       <div className="card">

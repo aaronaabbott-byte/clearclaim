@@ -2,7 +2,7 @@
 
 // Downloads the usage snapshot as a CSV: a metrics summary, then one row per
 // account. Runs entirely in the browser (no server round-trip).
-export default function StatsExport({ stats, accounts = [] }) {
+export default function StatsExport({ stats, accounts = [], trend = [] }) {
   const active = (d) => d && String(d) >= new Date().toISOString().slice(0, 10);
   const planOf = (a) => {
     if (active(a.family_until)) return `Family→${a.family_until}`;
@@ -21,6 +21,12 @@ export default function StatsExport({ stats, accounts = [] }) {
     rows.push([]);
     rows.push(["Metric", "Value"]);
     for (const [k, v] of Object.entries(stats)) rows.push([k, v]);
+    if (trend.length) {
+      rows.push([]);
+      rows.push(["Claims created (last 7 days)"]);
+      rows.push(["date", "count"]);
+      for (const t of trend) rows.push([t.date, t.count]);
+    }
     rows.push([]);
     rows.push(["email", "created_at", "last_sign_in_at", "state", "plan", "students", "claims", "preapprovals", "is_provider"]);
     for (const a of accounts) {
