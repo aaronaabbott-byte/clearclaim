@@ -43,11 +43,12 @@ create trigger ar_free_family
   after insert or update on profiles
   for each row execute function sync_ar_free_family();
 
--- Backfill existing accounts. Update rows that already have an entitlement...
-update entitlements e
-  set free_family = (upper(coalesce(p.state, 'AR')) = 'AR')
-  from profiles p
-  where p.user_id = e.user_id;
+-- Backfill existing accounts. Update rows that already have an entitlement,
+-- using a correlated subquery (avoids UPDATE...FROM alias quirks in the editor).
+update entitlements
+  set free_family = (
+    upper(coalesce((select p.state from profiles p where p.user_id = entitlements.user_id), 'AR')) = 'AR'
+  );
 
 -- ...and create one for any profile that doesn't have an entitlement yet.
 insert into entitlements (user_id, free_family)
