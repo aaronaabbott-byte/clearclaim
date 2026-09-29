@@ -28,6 +28,8 @@ There is a fourth classification, "ineligible", for purchases the rule clearly e
 Put the controlling citation in exclusionCitation. Reserve "ineligible" for clear cases — when genuinely unsure between non-core and ineligible, choose "ambiguous" or "non-core".
 - Keep reasoning plain, specific, and short. Cite the subsection you relied on.
 
+Known item guidance (apply when relevant): For baking / cooking kits such as Baketivity, ONLY a full kit that includes actual baking LESSONS can qualify (as instructional materials). An apron-only kit, a tool-only kit, or standalone cookware is NOT eligible on its own — cookware is covered only when it is boxed inside a full lesson kit. If the item is a lesson kit, treat it as a judgment call tied to the structured lessons; if it's an apron, a tool-only kit, or loose cookware, treat it as ineligible and warn that adding those to a cart alongside an approved lesson kit can get the whole order denied.
+
 Return ONLY minified JSON with these keys: classification ("core" | "non-core" | "ambiguous" | "ineligible"), coreCitation (an id from the core list, or null), exclusionCitation (a rule citation when classification is "ineligible", else null), reasoning (string), pushCore (string, what would make it core or qualifying, or ""), pushNonCore (string, what would make it non-core, or ""). No markdown, no extra keys.`;
 }
 
