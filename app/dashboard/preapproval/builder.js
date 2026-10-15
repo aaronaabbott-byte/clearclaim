@@ -62,10 +62,29 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
     const a = attachments[i];
     if (!a?.path) return;
     setErr(""); setAtbusy(true);
-    const { data, error } = await supabase.storage.from("documents").createSignedUrl(a.path, LINK_TTL);
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "create", path: a.path, name: a.name, kind: a.kind }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Couldn't make a link.");
+      setAttachments(list => list.map((x, idx) => idx === i ? { ...x, url: data.url, token: data.token } : x));
+    } catch (e) { setErr(e.message || "Couldn't make a link."); }
     setAtbusy(false);
-    if (error) { setErr("Couldn't make a link: " + error.message); return; }
-    setAttachments(list => list.map((x, idx) => idx === i ? { ...x, url: data.signedUrl } : x));
+  }
+  async function revokeLink(i) {
+    const a = attachments[i];
+    if (!a?.token) return;
+    setAtbusy(true);
+    try {
+      await fetch("/api/share", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "revoke", token: a.token }),
+      });
+    } catch { /* best effort */ }
+    setAttachments(list => list.map((x, idx) => idx === i ? { ...x, url: undefined, token: undefined } : x));
+    setAtbusy(false);
   }
   function addFromVault(d) {
     if (!d?.path) return;
@@ -130,7 +149,7 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
       if (!description && !justification) { setErr("Add a description or generate the justification first."); setBusy(false); return; }
       const row = {
         students, description, cost, justification, link, status,
-        files: attachments.map(a => ({ path: a.path, name: a.name, kind: a.kind, fromVault: !!a.fromVault })),
+        files: attachments.map(a => ({ path: a.path, name: a.name, kind: a.kind, fromVault: !!a.fromVault, url: a.url, token: a.token })),
         submitted_date: status === "submitted" ? new Date().toISOString().slice(0, 10) : (existing?.submitted_date || null),
       };
       let error;
@@ -263,10 +282,11 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
                     <input readOnly value={a.url} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 200, fontSize: 12 }} />
                     <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => copyText(a.url)}>Copy</button>
                     <a className="sans" href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>Open</a>
+                    <button type="button" className="sans" style={{ fontSize: 12.5, color: "var(--red)", borderColor: "#e3b7b3" }} disabled={atbusy} onClick={() => revokeLink(i)}>Turn off link</button>
                   </div>}
               </div>
             ))}
-            <p className="finenote">Paste these links into the pre-approval form's link field. Links expire in about 6 months — reopen this request to make fresh ones if a reviewer needs them later.</p>
+            <p className="finenote">Paste these links into the pre-approval form's link field. Each link opens the file from clearclaimapp.com and stays live until you turn it off — anyone with the link can view that file, so only share what you're comfortable with.</p>
           </div>}
       </div>
 

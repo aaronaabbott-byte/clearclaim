@@ -19,16 +19,33 @@ export default function DocumentLibrary({ userId, kids, documents }) {
   const [err, setErr] = useState("");
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState("");
-  const [links, setLinks] = useState({});   // { docId: signedUrl } — opt-in shareable links
-  const LINK_TTL = 60 * 60 * 24 * 182;       // ~6 months
+  const [links, setLinks] = useState({});   // { docId: { url, token } } — opt-in branded shareable links
 
   const kidName = (id) => kids.find(k => k.id === id)?.first_name;
 
   async function makeShareLink(d) {
     setErr("");
-    const { data, error } = await supabase.storage.from("documents").createSignedUrl(d.path, LINK_TTL);
-    if (error) { setErr("Couldn't make a link: " + error.message); return; }
-    setLinks(m => ({ ...m, [d.id]: data.signedUrl }));
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "create", path: d.path, name: d.filename || d.label, kind: d.kind }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Couldn't make a link.");
+      setLinks(m => ({ ...m, [d.id]: { url: data.url, token: data.token } }));
+    } catch (e) { setErr(e.message || "Couldn't make a link."); }
+  }
+  async function revokeShareLink(d) {
+    const l = links[d.id];
+    if (l?.token) {
+      try {
+        await fetch("/api/share", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "revoke", token: l.token }),
+        });
+      } catch { /* best effort */ }
+    }
+    setLinks(m => { const n = { ...m }; delete n[d.id]; return n; });
   }
   function copyText(t) { try { navigator.clipboard.writeText(t); setMsg("Link copied."); } catch { /* ignore */ } }
 
@@ -122,8 +139,8 @@ export default function DocumentLibrary({ userId, kids, documents }) {
         ) : (
           <>
           <p className="finenote" style={{ marginTop: -4, marginBottom: 8 }}>
-            "Get link" makes a shareable link — handy for pasting into the pre-approval form, which only takes links.
-            Anyone with the link can open that file for about 6 months, so only share what you're comfortable with.
+            "Get link" makes a shareable clearclaimapp.com link — handy for pasting into the pre-approval form, which only takes links.
+            It stays live until you turn it off, and anyone with the link can open that file, so only share what you're comfortable with.
           </p>
           <div style={{ display: "grid", gap: 8 }}>
             {documents.map(d => (
@@ -148,15 +165,15 @@ export default function DocumentLibrary({ userId, kids, documents }) {
                     )}
                   </div>
                   {editId !== d.id && <button type="button" onClick={() => startRename(d)}>Rename</button>}
-                  <button type="button" onClick={() => links[d.id] ? setLinks(m => { const n = { ...m }; delete n[d.id]; return n; }) : makeShareLink(d)}>{links[d.id] ? "Hide link" : "Get link"}</button>
+                  <button type="button" onClick={() => links[d.id] ? revokeShareLink(d) : makeShareLink(d)}>{links[d.id] ? "Turn off link" : "Get link"}</button>
                   <button type="button" onClick={() => download(d.path)}>Download</button>
                   <button type="button" onClick={() => remove(d.id, d.path)} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
                 </div>
                 {links[d.id] &&
                   <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <input readOnly value={links[d.id]} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 200, fontSize: 12 }} />
-                    <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => copyText(links[d.id])}>Copy</button>
-                    <a className="sans" href={links[d.id]} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>Open</a>
+                    <input readOnly value={links[d.id].url} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 200, fontSize: 12 }} />
+                    <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => copyText(links[d.id].url)}>Copy</button>
+                    <a className="sans" href={links[d.id].url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>Open</a>
                   </div>}
               </div>
             ))}
