@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { CRITERIA, COST_NOTE, buildPrefillUrl } from "@/lib/preapproval";
@@ -33,7 +33,49 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
+  // Supporting-document attachments + opt-in shareable links (the ADE form only
+  // takes links, not uploads). Signed links are per-file and opt-in.
+  const [attachments, setAttachments] = useState(Array.isArray(existing?.files) ? existing.files : []);
+  const [atkind, setAtkind] = useState("Curriculum / supply list");
+  const [atbusy, setAtbusy] = useState(false);
+  const fileRef = useRef(null);
+  const LINK_TTL = 60 * 60 * 24 * 182; // ~6 months in seconds
+
+  async function uploadAttachment(e) {
+    e?.preventDefault?.();
+    const files = fileRef.current?.files;
+    if (!files || !files.length) return;
+    setAtbusy(true); setErr("");
+    const uid = (await supabase.auth.getUser()).data.user?.id;
+    const added = [];
+    for (const file of Array.from(files)) {
+      const safe = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `${uid}/preapproval/${Date.now()}-${safe}`;
+      const { error } = await supabase.storage.from("documents").upload(path, file, { upsert: false });
+      if (!error) added.push({ path, name: file.name, kind: atkind });
+    }
+    if (fileRef.current) fileRef.current.value = "";
+    setAttachments(a => [...a, ...added]);
+    setAtbusy(false);
+  }
+  async function makeLink(i) {
+    const a = attachments[i];
+    if (!a?.path) return;
+    setErr(""); setAtbusy(true);
+    const { data, error } = await supabase.storage.from("documents").createSignedUrl(a.path, LINK_TTL);
+    setAtbusy(false);
+    if (error) { setErr("Couldn't make a link: " + error.message); return; }
+    setAttachments(list => list.map((x, idx) => idx === i ? { ...x, url: data.signedUrl } : x));
+  }
+  async function removeAttachment(i) {
+    const a = attachments[i];
+    try { if (a?.path) await supabase.storage.from("documents").remove([a.path]); } catch { /* best effort */ }
+    setAttachments(list => list.filter((_, idx) => idx !== i));
+  }
+  function copyText(t) { try { navigator.clipboard.writeText(t); setMsg("Link copied."); } catch { /* ignore */ } }
+
   const tech = useMemo(() => detectTech(description), [description]);
+  const isFurniture = /\b(desk|chair|furniture|bookshelf|book\s*shelf|table|stool)\b/i.test(description);
   const costNum = parseFloat(String(cost).replace(/[^0-9.]/g, "")) || 0;
 
   function addKid(k) {
@@ -80,6 +122,7 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
       if (!description && !justification) { setErr("Add a description or generate the justification first."); setBusy(false); return; }
       const row = {
         students, description, cost, justification, link, status,
+        files: attachments.map(a => ({ path: a.path, name: a.name, kind: a.kind })),
         submitted_date: status === "submitted" ? new Date().toISOString().slice(0, 10) : (existing?.submitted_date || null),
       };
       let error;
@@ -127,6 +170,15 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
             Heads up: items like TVs, game consoles, phones, and smart watches are excluded technology categories under the rule, so a pre-approval for this is unlikely to help. Double-check before you spend.
           </p>}
 
+        {(tech.isTech || isFurniture) && (
+          <div style={{ marginTop: 10, border: "1px solid #e3b7b3", background: "#fbeeee", borderRadius: 10, padding: "11px 13px" }}>
+            <div className="sans" style={{ fontWeight: 800, color: "#9a2b25", fontSize: 13.5 }}>⚠️ List every prior {isFurniture && !tech.isTech ? "furniture" : "technology"} purchase — item, price, and date</div>
+            <p className="sans" style={{ fontSize: 13, color: "#4a3a38", marginTop: 4, marginBottom: 0, lineHeight: 1.5 }}>
+              Reviewers do <b>not</b> look up what you've already bought — they only see what you write in this request. If you don't disclose every prior {isFurniture && !tech.isTech ? "furniture" : "technology"} purchase (what it was, how much, and when), your reimbursement can be <b>denied later — even after this pre-approval is granted</b>. Spell them all out below, with prices and dates.
+            </p>
+          </div>
+        )}
+
         <div style={{ marginTop: 12 }}>
           <label>Why it is necessary (the long field that carries the request)</label>
           <textarea rows={6} value={justification} onChange={e => setJustification(e.target.value)} placeholder="Explain how this supports the student's learning. Or let AI draft it, then edit." />
@@ -142,6 +194,55 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
 
         {err && <p style={{ color: "var(--red)", fontSize: 13 }}>{err}</p>}
         {msg && <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>}
+      </div>
+
+      {/* Supporting documents + opt-in shareable links (the ADE form takes links, not uploads) */}
+      <div className="card">
+        <h2 style={{ margin: 0 }}>Supporting documents &amp; links</h2>
+        <p className="muted sans" style={{ fontSize: 13.5, marginTop: 6 }}>
+          The Department's pre-approval form can't accept file uploads — only links. Upload your supporting documents here
+          (a curriculum or supply list, an item page, a therapist/provider note), make a shareable link for each, and paste
+          the link into the form's link field. The files also stay here as your record.
+        </p>
+        <div style={{ border: "1px solid #e7d3a6", background: "#fdf7e8", borderRadius: 10, padding: "10px 12px", marginTop: 8 }}>
+          <p className="sans" style={{ fontSize: 12.5, color: "#4a4636", margin: 0, lineHeight: 1.5 }}>
+            <b>Before you make a link:</b> anyone who has the link can open that file — the reviewer's form has no login — and the
+            link works for about 6 months. Only make a link for a document you're comfortable sharing with the reviewer, and
+            don't link anything you wouldn't put in the request. For a medical or therapist note, share only what the request
+            actually needs.
+          </p>
+        </div>
+        <div className="row" style={{ marginTop: 10 }}>
+          <div><label>Document type</label>
+            <select value={atkind} onChange={e => setAtkind(e.target.value)}>
+              {["Curriculum / supply list", "Item page / product listing", "Therapist or provider note", "Other"].map(k => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+          <div><label>File (photo, screenshot, or PDF)</label>
+            <input ref={fileRef} type="file" accept="image/*,.heic,.heif,application/pdf" multiple />
+          </div>
+        </div>
+        <button type="button" className="sans" style={{ marginTop: 8 }} disabled={atbusy} onClick={uploadAttachment}>{atbusy ? "Working…" : "Upload"}</button>
+
+        {attachments.length > 0 &&
+          <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+            {attachments.map((a, i) => (
+              <div key={i} className="kid" style={{ display: "block", padding: "11px 13px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 160 }}><b className="sans" style={{ fontSize: 13.5 }}>{a.name}</b>{a.kind ? <span className="muted sans" style={{ fontSize: 12.5 }}> · {a.kind}</span> : null}</div>
+                  {!a.url && <button type="button" className="sans" style={{ fontSize: 12.5 }} disabled={atbusy} onClick={() => makeLink(i)}>Get shareable link</button>}
+                  <button type="button" className="sans" style={{ fontSize: 12.5, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={() => removeAttachment(i)}>Remove</button>
+                </div>
+                {a.url &&
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <input readOnly value={a.url} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 200, fontSize: 12 }} />
+                    <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => copyText(a.url)}>Copy</button>
+                    <a className="sans" href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>Open</a>
+                  </div>}
+              </div>
+            ))}
+            <p className="finenote">Paste these links into the pre-approval form's link field. Links expire in about 6 months — reopen this request to make fresh ones if a reviewer needs them later.</p>
+          </div>}
       </div>
 
       {/* Technology-specific path — shown only for tech devices/accessories */}
@@ -202,9 +303,9 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
           </div>
 
           <div style={{ marginTop: 10 }}>
-            <label>Technology this student already received through EFA (device + year)</label>
-            <input value={priorTech} onChange={e => setPriorTech(e.target.value)} placeholder="e.g. tablet (2025)" />
-            <p className="finenote" style={{ marginTop: 4 }}>Prefilled from the student's profile when you pick them above. The draft uses this to show the new device is not a duplicate.</p>
+            <label>Technology this student already received through EFA — item, price, and when (list ALL of it)</label>
+            <input value={priorTech} onChange={e => setPriorTech(e.target.value)} placeholder="e.g. tablet $280 (Aug 2025); printer $90 (Oct 2025)" />
+            <p className="finenote" style={{ marginTop: 4 }}>Prefilled from the student's profile when you pick them above — add the price and date for each. The draft uses this to show the new device isn't a duplicate, and it's what protects you from a "didn't disclose prior purchases" denial later.</p>
           </div>
 
           <p className="finenote" style={{ marginTop: 10 }}>{TECH_PRIVACY_NOTE}</p>
