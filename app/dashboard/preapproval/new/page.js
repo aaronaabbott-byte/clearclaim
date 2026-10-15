@@ -24,6 +24,7 @@ export default async function NewPreapproval({ searchParams }) {
     .reduce((s, c) => s + capContribution(c), 0)
     + sumCapEntries(capEntries, kidId, "technology", BY);
   const kids = (rawKids || []).map(k => ({ ...k, tech_used: techUsed(k.id) }));
+  const { data: documents } = await supabase.from("documents").select("id,kid_id,label,kind,path,filename").order("created_at", { ascending: false });
   const seed = (searchParams?.desc || "").toString();
 
   return (
@@ -34,7 +35,7 @@ export default async function NewPreapproval({ searchParams }) {
         <Link href="/dashboard"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Dashboard</button></Link>
       </header>
       <main>
-        <PreapprovalBuilder kids={kids || []} userEmail={user.email} existing={seed ? { description: seed } : null} />
+        <PreapprovalBuilder kids={kids || []} userEmail={user.email} documents={documents || []} existing={seed ? { description: seed } : null} />
       </main>
     </>
   );

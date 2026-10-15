@@ -26,6 +26,7 @@ export default async function EditPreapproval({ params }) {
   const kids = (rawKids || []).map(k => ({ ...k, tech_used: techUsed(k.id) }));
   const { data: existing } = await supabase.from("preapprovals").select("*").eq("id", params.id).single();
   if (!existing) notFound();
+  const { data: documents } = await supabase.from("documents").select("id,kid_id,label,kind,path,filename").order("created_at", { ascending: false });
 
   return (
     <>
@@ -35,7 +36,7 @@ export default async function EditPreapproval({ params }) {
         <Link href="/dashboard"><button style={{ background: "#ffffff1a", color: "#fff", borderColor: "#ffffff40" }}>← Dashboard</button></Link>
       </header>
       <main>
-        <PreapprovalBuilder kids={kids || []} userEmail={user.email} existing={existing} />
+        <PreapprovalBuilder kids={kids || []} userEmail={user.email} documents={documents || []} existing={existing} />
       </main>
     </>
   );

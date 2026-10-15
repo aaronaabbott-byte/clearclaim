@@ -7,7 +7,7 @@ import { detectTech, LIMITATION_CHIPS, PER_DEVICE_REVIEW, CAP_EXCEED, TECH_CAP, 
 
 const money = (n) => `$${(Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
-export default function PreapprovalBuilder({ kids, userEmail, existing }) {
+export default function PreapprovalBuilder({ kids, userEmail, documents = [], existing }) {
   const router = useRouter();
   const supabase = createClient();
   const editing = !!existing;
@@ -67,9 +67,17 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
     if (error) { setErr("Couldn't make a link: " + error.message); return; }
     setAttachments(list => list.map((x, idx) => idx === i ? { ...x, url: data.signedUrl } : x));
   }
+  function addFromVault(d) {
+    if (!d?.path) return;
+    setAttachments(list => list.some(x => x.path === d.path)
+      ? list
+      : [...list, { path: d.path, name: d.label || d.filename || "document", kind: d.kind || "Vault document", fromVault: true }]);
+  }
   async function removeAttachment(i) {
     const a = attachments[i];
-    try { if (a?.path) await supabase.storage.from("documents").remove([a.path]); } catch { /* best effort */ }
+    // Only delete files uploaded here. A vault document is referenced elsewhere —
+    // just drop it from this request, don't delete the original.
+    if (!a?.fromVault) { try { if (a?.path) await supabase.storage.from("documents").remove([a.path]); } catch { /* best effort */ } }
     setAttachments(list => list.filter((_, idx) => idx !== i));
   }
   function copyText(t) { try { navigator.clipboard.writeText(t); setMsg("Link copied."); } catch { /* ignore */ } }
@@ -122,7 +130,7 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
       if (!description && !justification) { setErr("Add a description or generate the justification first."); setBusy(false); return; }
       const row = {
         students, description, cost, justification, link, status,
-        files: attachments.map(a => ({ path: a.path, name: a.name, kind: a.kind })),
+        files: attachments.map(a => ({ path: a.path, name: a.name, kind: a.kind, fromVault: !!a.fromVault })),
         submitted_date: status === "submitted" ? new Date().toISOString().slice(0, 10) : (existing?.submitted_date || null),
       };
       let error;
@@ -223,6 +231,23 @@ export default function PreapprovalBuilder({ kids, userEmail, existing }) {
           </div>
         </div>
         <button type="button" className="sans" style={{ marginTop: 8 }} disabled={atbusy} onClick={uploadAttachment}>{atbusy ? "Working…" : "Upload"}</button>
+
+        {documents.length > 0 &&
+          <div style={{ marginTop: 14, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+            <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Or pick from your document library</div>
+            <p className="finenote" style={{ marginTop: 2, marginBottom: 8 }}>Add a file you already saved in Documents, then make a shareable link for it the same way.</p>
+            <div style={{ display: "grid", gap: 6 }}>
+              {documents.map(d => {
+                const already = attachments.some(x => x.path === d.path);
+                return (
+                  <div key={d.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5 }}>
+                    <span style={{ flex: 1, minWidth: 0 }}><b>{d.label || d.filename || "Document"}</b>{d.kind ? <span className="muted"> · {d.kind}</span> : null}</span>
+                    <button type="button" className="sans" style={{ fontSize: 12.5 }} disabled={already} onClick={() => addFromVault(d)}>{already ? "Added" : "Add"}</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>}
 
         {attachments.length > 0 &&
           <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
