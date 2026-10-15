@@ -19,8 +19,18 @@ export default function DocumentLibrary({ userId, kids, documents }) {
   const [err, setErr] = useState("");
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState("");
+  const [links, setLinks] = useState({});   // { docId: signedUrl } — opt-in shareable links
+  const LINK_TTL = 60 * 60 * 24 * 182;       // ~6 months
 
   const kidName = (id) => kids.find(k => k.id === id)?.first_name;
+
+  async function makeShareLink(d) {
+    setErr("");
+    const { data, error } = await supabase.storage.from("documents").createSignedUrl(d.path, LINK_TTL);
+    if (error) { setErr("Couldn't make a link: " + error.message); return; }
+    setLinks(m => ({ ...m, [d.id]: data.signedUrl }));
+  }
+  function copyText(t) { try { navigator.clipboard.writeText(t); setMsg("Link copied."); } catch { /* ignore */ } }
 
   function startRename(d) { setEditId(d.id); setEditVal(d.label || d.filename || ""); }
   async function saveRename(id) {
@@ -110,33 +120,48 @@ export default function DocumentLibrary({ userId, kids, documents }) {
         {(!documents || documents.length === 0) ? (
           <p className="muted sans" style={{ fontSize: 14 }}>Nothing uploaded yet.</p>
         ) : (
+          <>
+          <p className="finenote" style={{ marginTop: -4, marginBottom: 8 }}>
+            "Get link" makes a shareable link — handy for pasting into the pre-approval form, which only takes links.
+            Anyone with the link can open that file for about 6 months, so only share what you're comfortable with.
+          </p>
           <div style={{ display: "grid", gap: 8 }}>
             {documents.map(d => (
-              <div className="kid" key={d.id} style={{ alignItems: "center" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {editId === d.id ? (
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                      <input value={editVal} onChange={e => setEditVal(e.target.value)} autoFocus
-                        onKeyDown={e => { if (e.key === "Enter") saveRename(d.id); if (e.key === "Escape") setEditId(null); }}
-                        style={{ maxWidth: 280 }} />
-                      <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => saveRename(d.id)}>Save</button>
-                      <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => setEditId(null)}>Cancel</button>
-                    </div>
-                  ) : (
-                    <>
-                      <b>{d.label || d.filename}</b>
-                      <div className="muted sans" style={{ fontSize: 13 }}>
-                        {d.kind}{d.kid_id ? ` · ${kidName(d.kid_id) || "student"}` : ""}{d.filename ? ` · ${d.filename}` : ""}
+              <div className="kid" key={d.id} style={{ display: "block", padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {editId === d.id ? (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        <input value={editVal} onChange={e => setEditVal(e.target.value)} autoFocus
+                          onKeyDown={e => { if (e.key === "Enter") saveRename(d.id); if (e.key === "Escape") setEditId(null); }}
+                          style={{ maxWidth: 280 }} />
+                        <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => saveRename(d.id)}>Save</button>
+                        <button type="button" className="sans" style={{ fontSize: 13 }} onClick={() => setEditId(null)}>Cancel</button>
                       </div>
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <b>{d.label || d.filename}</b>
+                        <div className="muted sans" style={{ fontSize: 13 }}>
+                          {d.kind}{d.kid_id ? ` · ${kidName(d.kid_id) || "student"}` : ""}{d.filename ? ` · ${d.filename}` : ""}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {editId !== d.id && <button type="button" onClick={() => startRename(d)}>Rename</button>}
+                  <button type="button" onClick={() => links[d.id] ? setLinks(m => { const n = { ...m }; delete n[d.id]; return n; }) : makeShareLink(d)}>{links[d.id] ? "Hide link" : "Get link"}</button>
+                  <button type="button" onClick={() => download(d.path)}>Download</button>
+                  <button type="button" onClick={() => remove(d.id, d.path)} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
                 </div>
-                {editId !== d.id && <button type="button" onClick={() => startRename(d)}>Rename</button>}
-                <button type="button" onClick={() => download(d.path)}>Download</button>
-                <button type="button" onClick={() => remove(d.id, d.path)} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete</button>
+                {links[d.id] &&
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <input readOnly value={links[d.id]} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 200, fontSize: 12 }} />
+                    <button type="button" className="sans" style={{ fontSize: 12.5 }} onClick={() => copyText(links[d.id])}>Copy</button>
+                    <a className="sans" href={links[d.id]} target="_blank" rel="noreferrer" style={{ fontSize: 12.5 }}>Open</a>
+                  </div>}
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
     </>
