@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-10-14-branded-share-links",
-    note: "Branded clearclaimapp.com/d/<token> shareable document links (permanent + revocable), plus Ann staff directory, price guide, prior-year receipts, admin Usage card.",
+    version: "2026-10-27-cashapp-vs-cash",
+    note: "Ann no longer confuses Cash App (accepted) with physical cash (not reimbursable); branded share links; staff directory; price guide; prior-year receipts; admin Usage card.",
     served_at: new Date().toISOString(),
   });
 }
