@@ -4,6 +4,8 @@ import { planFrom } from "@/lib/plan";
 import { getStateConfig } from "@/lib/states";
 import { bestVendorMatch, findVendors, scanMessageForVendor } from "@/lib/vendors";
 import { loadItemData, lookupItem, scanMessageForItem, storeList } from "@/lib/itemstores";
+import { logError } from "@/lib/errors";
+import { captureFeatureRequest } from "@/lib/feature-requests";
 
 // Pull a likely vendor name out of a question like "is Varsity Tutors a vendor?"
 // or "where do I find AOP in classwallet?". Returns the candidate phrase, or "".
@@ -304,8 +306,15 @@ export async function POST(request) {
     if (!r.ok) return NextResponse.json({ reply: null, error: `api_${r.status}` });
     const data = await r.json();
     const reply = (data?.content?.[0]?.text || "").trim();
+    // If Ann clearly couldn't answer, log the family's question as a possible
+    // gap. Tight pattern so a normal "contact ADE" answer isn't flagged.
+    if (/\bI (?:don't|do not) (?:have|know)\b|\bI'?m not sure\b|\bI (?:can't|cannot|am not able to) (?:help|answer)\b|I don'?t have (?:that information|enough information|access to)/i.test(reply)) {
+      const lastQ = [...trimmed].reverse().find(m => m.role === "user")?.content;
+      await captureFeatureRequest({ trigger: "ann_unanswered", text: lastQ, state: stateConfig?.code, userId: user?.id });
+    }
     return NextResponse.json({ reply: reply || "Sorry — I didn't catch that. Could you rephrase?" });
   } catch (e) {
+    await logError("api/ann", e);
     return NextResponse.json({ reply: null, error: String(e?.message || e) });
   }
 }

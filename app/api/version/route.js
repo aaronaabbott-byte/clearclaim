@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-10-27-cashapp-vs-cash",
-    note: "Ann no longer confuses Cash App (accepted) with physical cash (not reimbursable); branded share links; staff directory; price guide; prior-year receipts; admin Usage card.",
+    version: "2026-11-10-proactive-suite-hobby",
+    note: "Notifications (#1) + error-handling loop (#2) + automated feature-request capture (#3, clustered, weekly digest, /admin/requests). Plus Cash App fix, branded share links, staff directory, price guide, admin Usage card.",
     served_at: new Date().toISOString(),
   });
 }

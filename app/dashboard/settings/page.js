@@ -8,6 +8,7 @@ import ProviderProfileForm from "../provider-profile";
 import StatePicker from "@/app/welcome/state-picker";
 import { getStateConfig } from "@/lib/states";
 import { isAdmin } from "@/lib/admin";
+import NotifyPrefs from "./notify-prefs";
 
 const DEMO_EMAIL = "demo@clearclaimapp.com";
 
@@ -59,6 +60,8 @@ export default async function Settings() {
             ? <StatePicker userId={user.id} current={profile?.state || "AR"} compact />
             : <p className="finenote">Your program is set when you sign up. If you've moved to a different state's program and need it changed, email <a href="mailto:clearclaimhelp@gmail.com" style={{ color: "var(--navy2)" }}>clearclaimhelp@gmail.com</a>.</p>}
         </div>
+
+        <NotifyPrefs userId={user.id} email={profile?.notify_email} deadlines={profile?.notify_deadlines} />
 
         {/* Business profile only for provider-only accounts. Dual-role (parent +
             provider) users edit it in the Provider view, so it doesn't clutter

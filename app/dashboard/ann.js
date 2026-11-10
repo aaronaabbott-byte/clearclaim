@@ -27,6 +27,20 @@ export default function AskAnn() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, open, busy]);
 
+  const [flagged, setFlagged] = useState({});
+  async function flagNotHelpful(i) {
+    // The user's question is the message just before this answer.
+    const q = [...messages.slice(0, i)].reverse().find(m => m.role === "user")?.content;
+    if (!q) return;
+    setFlagged(f => ({ ...f, [i]: true }));
+    try {
+      await fetch("/api/feature-request", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ trigger: "user_request", text: q }),
+      });
+    } catch { /* best effort */ }
+  }
+
   async function send(e) {
     e?.preventDefault();
     const text = input.trim();
@@ -81,12 +95,20 @@ export default function AskAnn() {
 
           <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, background: "#f7f9fc" }}>
             {messages.map((m, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 10 }}>
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start", marginBottom: 10 }}>
                 <div style={{
                   maxWidth: "82%", padding: "9px 12px", borderRadius: 14, fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap",
                   background: m.role === "user" ? "var(--navy2)" : "#fff", color: m.role === "user" ? "#fff" : "var(--ink)",
                   border: m.role === "user" ? "none" : "1px solid var(--line)",
                 }}><Rich text={m.content} /></div>
+                {m.role === "assistant" && i > 0 && (
+                  flagged[i]
+                    ? <span className="muted sans" style={{ fontSize: 11.5, marginTop: 3 }}>Thanks — logged for the team.</span>
+                    : <button type="button" onClick={() => flagNotHelpful(i)} className="sans"
+                        style={{ fontSize: 11.5, marginTop: 3, background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 0 }}>
+                        This didn't answer my question
+                      </button>
+                )}
               </div>
             ))}
             {busy && <div className="muted" style={{ fontSize: 13, fontStyle: "italic" }}>Ann is typing…</div>}

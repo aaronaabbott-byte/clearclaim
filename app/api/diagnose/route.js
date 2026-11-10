@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { planFrom } from "@/lib/plan";
 import { getStateConfig } from "@/lib/states";
 import { diagnoseDenial } from "@/lib/denials";
+import { captureFeatureRequest } from "@/lib/feature-requests";
 
 // Diagnose a denied submission. The curated rules engine (lib/denials) does the
 // real work; AI is only an assist for oddly-worded reasons the rules didn't
@@ -21,6 +22,12 @@ export async function POST(request) {
   const claim = { items: (body.items || "").toString().slice(0, 500), category: (body.category || "").toString().slice(0, 120) };
 
   const result = diagnoseDenial(reason, claim);
+
+  // The curated rules didn't recognize this denial reason — a real gap worth
+  // surfacing. Log it (clustered) so recurring unmapped reasons become a to-do.
+  if (result.unclear && reason.trim()) {
+    await captureFeatureRequest({ trigger: "denial_unmapped", text: reason, state: prof?.state, userId: user.id });
+  }
 
   // AI assist only for unclear cases, and only on the Family plan with a key.
   const { data: ent } = await supabase.from("entitlements").select("*").eq("user_id", user.id).single();

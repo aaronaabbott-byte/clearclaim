@@ -164,6 +164,8 @@ export default async function Admin() {
           <h2 style={{ margin: 0 }}>Usage</h2>
           <span className="muted sans" style={{ fontSize: 13 }}>live snapshot</span>
           <span className="spacer" style={{ flex: 1 }} />
+          <Link href="/admin/requests"><button className="sans" style={{ fontSize: 13 }}>Feature requests →</button></Link>
+          <Link href="/admin/health"><button className="sans" style={{ fontSize: 13 }}>System health →</button></Link>
           <StatsExport stats={stats} accounts={users} trend={trend} />
         </div>
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
