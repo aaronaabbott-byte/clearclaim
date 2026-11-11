@@ -9,6 +9,7 @@ import { schoolYearLabel } from "@/lib/compliance";
 import ComplianceTracker from "./compliance";
 import CocurricularGuide from "./cocurricular";
 import ExtracurricularGuide from "./extracurricular";
+import Collapsible from "./collapsible";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
 import PreapprovalStatus from "./preapproval-status";
@@ -221,6 +222,7 @@ export default async function Dashboard() {
           )}
         </div>
 
+        <Collapsible title="Tools &amp; references" subtitle="Syllabi, documents, and course/activity checklists">
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h2 style={{ margin: 0 }}>Syllabi</h2>
@@ -271,6 +273,7 @@ export default async function Dashboard() {
 
         {feat.coCurricularChecklist && <CocurricularGuide />}
         {feat.coCurricularChecklist && <ExtracurricularGuide />}
+        </Collapsible>
 
         {feat.homeschoolCompliance && hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
 

@@ -449,8 +449,9 @@ export default function ClaimBuilder({
         </div>
         <div><label>Pathway</label>
           <select value={pathway} onChange={e => setPathway(e.target.value)}>
-            {pathways.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            {pathways.map(p => <option key={p.value} value={p.value}>{p.short || p.label}</option>)}
           </select>
+          <p className="finenote" style={{ marginTop: 4 }}>{(pathways.find(p => p.value === pathway) || {}).desc || ""}</p>
         </div>
       </div>
 
