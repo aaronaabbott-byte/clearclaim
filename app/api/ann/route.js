@@ -296,6 +296,9 @@ export async function POST(request) {
       system += itemStoreNote(itemData, trimmed);
     } catch { /* item lookup is best-effort */ }
   }
+  // When a family suggests an improvement, Ann should welcome it and say it's
+  // been passed to the team (the app records these automatically below).
+  system += "\n\nFEATURE REQUESTS: If the family suggests an improvement, asks for a feature, or says they wish ClearClaim could do something, respond warmly and tell them you've passed the idea to the ClearClaim team to consider. Never promise it will be built or give a timeline.";
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -305,11 +308,18 @@ export async function POST(request) {
     });
     if (!r.ok) return NextResponse.json({ reply: null, error: `api_${r.status}` });
     const data = await r.json();
-    const reply = (data?.content?.[0]?.text || "").trim();
-    // If Ann clearly couldn't answer, log the family's question as a possible
-    // gap. Tight pattern so a normal "contact ADE" answer isn't flagged.
-    if (/\bI (?:don't|do not) (?:have|know)\b|\bI'?m not sure\b|\bI (?:can't|cannot|am not able to) (?:help|answer)\b|I don'?t have (?:that information|enough information|access to)/i.test(reply)) {
-      const lastQ = [...trimmed].reverse().find(m => m.role === "user")?.content;
+    let reply = (data?.content?.[0]?.text || "").trim();
+    const lastQ = [...trimmed].reverse().find(m => m.role === "user")?.content || "";
+    // 1) The family is explicitly asking for a feature or wishing out loud —
+    // capture it as a request and confirm it was logged, right in the reply.
+    const FEATURE_WISH = /\b(i wish|wish (?:you|it|this|clearclaim|ann)|would love (?:it )?if|it would be (?:great|nice|helpful|handy|useful|cool|awesome)|it'?d be (?:great|nice|helpful|handy)|can (?:you|clearclaim|the app|ann) (?:please )?(?:add|support|do|build|make)|could (?:you|the app|clearclaim) (?:please )?add|(?:you|the app) should (?:add|support|be able|have)|please add|feature request|is there any way (?:you|to)|add (?:a|an) (?:feature|way|button|option|setting))\b/i;
+    if (lastQ && FEATURE_WISH.test(lastQ)) {
+      await captureFeatureRequest({ trigger: "user_request", text: lastQ, state: stateConfig?.code, userId: user?.id });
+      reply += "\n\n(Thanks! I've shared this with the ClearClaim team as a feature request.)";
+    }
+    // 2) Otherwise, if Ann clearly couldn't answer, log the family's question as a
+    // possible gap. Tight pattern so a normal "contact ADE" answer isn't flagged.
+    else if (/\bI (?:don't|do not) (?:have|know)\b|\bI'?m not sure\b|\bI (?:can't|cannot|am not able to) (?:help|answer)\b|I don'?t have (?:that information|enough information|access to)/i.test(reply)) {
       await captureFeatureRequest({ trigger: "ann_unanswered", text: lastQ, state: stateConfig?.code, userId: user?.id });
     }
     return NextResponse.json({ reply: reply || "Sorry — I didn't catch that. Could you rephrase?" });
