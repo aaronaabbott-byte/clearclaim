@@ -63,6 +63,19 @@ export default async function Admin() {
     admin.from("documents").select("user_id"),
     admin.from("devices").select("user_id"),   // table may not exist yet; guarded below
   ]);
+
+  // Weekly pulse: the three feedback loops on one screen.
+  const [{ data: frs }, { data: clusters }, { data: csat }] = await Promise.all([
+    admin.from("feature_requests").select("status, count, title, trigger").in("status", ["open", "planned"]).order("count", { ascending: false }).limit(50),
+    admin.from("error_clusters").select("status, count, source").eq("status", "open").limit(50),
+    admin.from("csat_responses").select("score, created_at").gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString()).limit(2000),
+  ]);
+  const openRequests = (frs || []).filter(f => f.status === "open").length;
+  const topRequest = (frs || [])[0] || null;
+  const openIssues = (clusters || []).length;
+  const csatN = (csat || []).length;
+  const csatAvg = csatN ? ((csat || []).reduce((s, r) => s + (r.score || 0), 0) / csatN) : 0;
+
   const entMap = {};
   for (const e of ents || []) entMap[e.user_id] = e;
   const tally = (rows) => {
@@ -159,6 +172,35 @@ export default async function Admin() {
 
   return (
     <Shell>
+      {/* Weekly pulse — the three feedback loops at a glance, each one click away. */}
+      <div className="card">
+        <h2 style={{ margin: 0 }}>This week's pulse</h2>
+        <p className="muted sans" style={{ fontSize: 13, marginTop: 4, marginBottom: 12 }}>A 10-second skim of the feedback loops. Open anything that needs you.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
+          <Link href="/admin/requests" style={{ textDecoration: "none" }}>
+            <div className="kid" style={{ display: "block" }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 24, color: openRequests ? "#c0392b" : "var(--navy)" }}>{openRequests}</div>
+              <div className="muted sans" style={{ fontSize: 12.5 }}>open feature requests</div>
+              {topRequest && <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Top: {topRequest.count}× {topRequest.title}</div>}
+            </div>
+          </Link>
+          <Link href="/admin/health" style={{ textDecoration: "none" }}>
+            <div className="kid" style={{ display: "block" }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 24, color: openIssues ? "#c0392b" : "var(--navy)" }}>{openIssues}</div>
+              <div className="muted sans" style={{ fontSize: 12.5 }}>open error{openIssues === 1 ? "" : "s"} to review</div>
+              <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4 }}>{openIssues ? "Needs a look" : "All clear"}</div>
+            </div>
+          </Link>
+          <Link href="/admin/csat" style={{ textDecoration: "none" }}>
+            <div className="kid" style={{ display: "block" }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--navy)" }}>{csatN ? csatAvg.toFixed(2) : "—"}</div>
+              <div className="muted sans" style={{ fontSize: 12.5 }}>CSAT · last 30 days</div>
+              <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4 }}>{csatN} response{csatN === 1 ? "" : "s"}</div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
       <div className="card">
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <h2 style={{ margin: 0 }}>Usage</h2>

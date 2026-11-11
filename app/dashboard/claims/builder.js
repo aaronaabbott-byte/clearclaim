@@ -87,6 +87,8 @@ export default function ClaimBuilder({
   const [purpose, setPurpose] = useState(existing?.purpose || initialNote);
   const [reasoning, setReasoning] = useState(existing?.reasoning || "");
   const [receipts, setReceipts] = useState([]);   // File[] (newly added this session)
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanMsg, setScanMsg] = useState("");
   const [payments, setPayments] = useState([]);    // File[] (newly added this session)
   const [supporting, setSupporting] = useState([]); // File[] — proof of enrollment, curriculum, letters, etc.
   const [keptFiles, setKeptFiles] = useState(Array.isArray(existing?.files) ? existing.files : []); // already-stored {path,kind,name}
@@ -172,6 +174,45 @@ export default function ClaimBuilder({
     });
   }
   const removeAt = (setter, i) => setter(prev => prev.filter((_, idx) => idx !== i));
+
+  // Downscale a receipt photo in the browser so the upload stays small, then
+  // return just the base64 payload.
+  async function fileToScaledBase64(file, maxDim = 1600, quality = 0.82) {
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("load")); i.src = URL.createObjectURL(file);
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    const url = c.toDataURL("image/jpeg", quality);
+    URL.revokeObjectURL(img.src);
+    return url.split(",")[1];
+  }
+
+  async function scanReceipt() {
+    const file = receipts.find(f => /^image\//.test(f.type)) || receipts[0];
+    if (!file) { setScanMsg("Add a receipt photo above first."); return; }
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { setScanMsg("Scanning needs a JPG or PNG photo (PDFs can't be scanned)."); return; }
+    setScanBusy(true); setScanMsg("Reading your receipt…");
+    try {
+      const b64 = await fileToScaledBase64(file);
+      const res = await fetch("/api/scan-receipt", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageBase64: b64, mediaType: "image/jpeg" }),
+      });
+      if (res.status === 402) { setScanMsg("Receipt scanning is a Family-plan feature."); setScanBusy(false); return; }
+      const d = await res.json();
+      if (!res.ok) { setScanMsg(d.error || "Couldn't scan that — enter the details by hand."); setScanBusy(false); return; }
+      if (d.vendor) setVendor(d.vendor);
+      if (d.amount) setAmount(d.amount);
+      if (d.date) setDate(d.date);
+      if (d.items) setItems(d.items);
+      const got = [d.vendor && "store", d.amount && "amount", d.date && "date", d.items && "items"].filter(Boolean);
+      setScanMsg(got.length ? `Filled in ${got.join(", ")} — double-check everything before you submit.` : "Couldn't make out the details — enter them by hand.");
+    } catch { setScanMsg("Couldn't scan that — enter the details by hand."); }
+    setScanBusy(false);
+  }
 
   // Vault: reusable documents for this student (or family-wide, kid_id null).
   const vaultDocs = documents.filter(d => !d.kid_id || d.kid_id === kidId);
@@ -521,6 +562,14 @@ export default function ClaimBuilder({
               <label>Receipt (photo, screenshot, or PDF)</label>
               <FileField files={receipts} onAdd={list => addFiles(setReceipts, list)} onRemove={i => removeAt(setReceipts, i)}
                 hint="Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you." />
+              {receipts.some(f => /^image\//.test(f.type)) && (
+                <div style={{ marginTop: 6 }}>
+                  <button type="button" className="sans" style={{ fontSize: 13 }} disabled={scanBusy} onClick={scanReceipt}>
+                    {scanBusy ? "Scanning…" : "✨ Scan receipt to fill the fields"}
+                  </button>
+                  {scanMsg && <p className="finenote" style={{ marginTop: 4, color: /double-check|Filled/.test(scanMsg) ? "var(--teal)" : "var(--muted)" }}>{scanMsg}</p>}
+                </div>
+              )}
             </div>
           )}
           {fields.payment && (

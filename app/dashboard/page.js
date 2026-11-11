@@ -10,6 +10,7 @@ import ComplianceTracker from "./compliance";
 import CocurricularGuide from "./cocurricular";
 import ExtracurricularGuide from "./extracurricular";
 import Collapsible from "./collapsible";
+import Onboarding from "./onboarding";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
 import PreapprovalStatus from "./preapproval-status";
@@ -95,6 +96,7 @@ export default async function Dashboard() {
       <main>
         {isDemo && <DemoReset />}
         {isFree && <UpgradeBanner />}
+        {(!claims || claims.length === 0) && <Onboarding hasStudents={hasKids} />}
         {/* Quick actions — a segmented control that jumps to the main tasks. */}
         <div className="sans hide-scrollbar" style={{ overflowX: "auto", marginBottom: 8 }}>
           <div style={{ display: "inline-flex", width: "max-content", border: "1px solid var(--navy)", borderRadius: 5, overflow: "hidden" }}>
