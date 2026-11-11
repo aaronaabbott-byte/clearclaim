@@ -8,14 +8,14 @@ const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 const blankLine = () => ({ desc: "", qty: 1, unit_price: "" });
 
-export default function InvoiceBuilder({ userId, provider, savedItems = [], existing }) {
+export default function InvoiceBuilder({ userId, provider, savedItems = [], existing, prefill = {} }) {
   const router = useRouter();
   const supabase = createClient();
   const editing = !!existing;
 
   const [invoiceNo, setInvoiceNo] = useState(existing?.invoice_no || "");
-  const [student, setStudent] = useState(existing?.student_name || "");
-  const [parent, setParent] = useState(existing?.parent_name || "");
+  const [student, setStudent] = useState(existing?.student_name || prefill.student || "");
+  const [parent, setParent] = useState(existing?.parent_name || prefill.parent || "");
   const [date, setDate] = useState(existing?.invoice_date || today());
   const [notes, setNotes] = useState(existing?.notes || "");
   const [shipping, setShipping] = useState(existing?.shipping || "");

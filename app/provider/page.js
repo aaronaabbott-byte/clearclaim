@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, providerReady } from "@/lib/profile";
 import { Bar } from "@/app/dashboard/students";
+import InvoiceStatus from "./invoice-status";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,19 @@ export default async function ProviderHome() {
     .eq("branded", true).order("created_at", { ascending: false });
   const { data: classes } = await supabase.from("classes").select("id,name,service,term,students")
     .order("created_at", { ascending: false });
-  const { data: invoices } = await supabase.from("invoices").select("id,invoice_no,student_name,total,invoice_date")
+  const { data: invoices } = await supabase.from("invoices").select("id,invoice_no,student_name,total,invoice_date,status")
     .order("created_at", { ascending: false });
+
+  // Light at-a-glance summary.
+  const invList = invoices || [];
+  const totalInvoiced = invList.reduce((s, v) => s + Number(v.total || 0), 0);
+  const unpaidTotal = invList.filter(v => v.status !== "paid").reduce((s, v) => s + Number(v.total || 0), 0);
+  const studentsServed = new Set([
+    ...invList.map(v => (v.student_name || "").trim().toLowerCase()).filter(Boolean),
+    ...(classes || []).flatMap(c => (Array.isArray(c.students) ? c.students : []).map(s => (s.student_name || "").trim().toLowerCase()).filter(Boolean)),
+  ]).size;
+  const classCount = (classes || []).length;
+  const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
   let logoUrl = null;
   if (profile.logo_path) {
@@ -47,6 +59,31 @@ export default async function ProviderHome() {
             <p className="finenote" style={{ marginTop: 12 }}>
               Finish your <Link href="/provider/setup" style={{ color: "var(--navy2)" }}>business profile</Link> so your documents have a proper letterhead.
             </p>}
+          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+            {[
+              { label: "Invoiced", value: money(totalInvoiced), sub: unpaidTotal > 0 ? `${money(unpaidTotal)} unpaid` : "all paid" },
+              { label: "Students served", value: String(studentsServed) },
+              { label: "Classes", value: String(classCount) },
+            ].map((t, i) => (
+              <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 6, padding: "10px 12px", background: "#faf8f3" }}>
+                <div style={{ fontFamily: "var(--serif)", fontSize: 22, color: "var(--navy)" }}>{t.value}</div>
+                <div className="muted sans" style={{ fontSize: 12 }}>{t.label}{t.sub ? ` · ${t.sub}` : ""}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Guidance: what families need from the provider to get reimbursed. */}
+        <div className="card">
+          <h2 style={{ margin: 0 }}>What your families need from you</h2>
+          <p className="muted sans" style={{ fontSize: 13.5, marginTop: 8 }}>
+            Families reimburse through their EFA/ESA program, and reviewers look for specific documentation. The tools below produce exactly what they need:
+          </p>
+          <ul className="sans" style={{ fontSize: 13.5, lineHeight: 1.6, color: "#45506a", margin: "4px 0 0", paddingLeft: 18 }}>
+            <li><b>An itemized invoice</b> on your letterhead — the student's name, the service dates, each line item with its price, and a total. This is what a family files for a Direct Pay or reimbursement.</li>
+            <li><b>A course document</b> for any class — a description, learning objectives, materials, schedule, and how you assess progress. This is what turns a class into an approvable <b>co-curricular course</b> (vs. a plain extracurricular activity) and is the strongest proof of educational use.</li>
+            <li><b>Your business details</b> — name, credentials, and contact on every document, so a reviewer can see who provided the service.</li>
+          </ul>
         </div>
 
         <div className="card">
@@ -99,11 +136,12 @@ export default async function ProviderHome() {
               <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 {invoices.map(v => (
                   <Link key={v.id} href={`/provider/invoice/${v.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                    <div className="kid" style={{ alignItems: "center" }}>
-                      <div style={{ flex: 1 }}>
+                    <div className="kid" style={{ alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
                         <b>{v.invoice_no ? `#${v.invoice_no}` : "Invoice"}{v.student_name ? ` · ${v.student_name}` : ""}</b>
                         <div className="muted sans" style={{ fontSize: 13 }}>{v.invoice_date || ""}</div>
                       </div>
+                      <InvoiceStatus id={v.id} status={v.status} />
                       <span className="sans" style={{ fontSize: 14, fontWeight: 700, color: "var(--navy2)" }}>${Number(v.total || 0).toFixed(2)}</span>
                     </div>
                   </Link>

@@ -5,15 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import { efaBudgetYear } from "@/lib/rules";
 import { buildSyllabusPdf } from "@/lib/syllabus";
 
-export default function SyllabusBuilder({ kids = [], userId, existing, provider = null, providerMode = false }) {
+export default function SyllabusBuilder({ kids = [], userId, existing, provider = null, providerMode = false, prefill = {} }) {
   const router = useRouter();
   const supabase = createClient();
   const editing = !!existing;
 
   const [kidId, setKidId] = useState(providerMode ? "" : (existing?.kid_id || kids[0]?.id || ""));
   const [f, setF] = useState({
-    title: existing?.title || "",
-    subject: existing?.subject || "",
+    title: existing?.title || prefill.title || "",
+    subject: existing?.subject || prefill.subject || "",
     grade: existing?.grade || (kids[0]?.grade || ""),
     term: existing?.term || efaBudgetYear().label,
     level: existing?.level || "",

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -72,16 +73,30 @@ export default function ClassEditor({ userId, existing, services = [] }) {
           <span className="spacer" style={{ flex: 1 }} />
           <button type="button" className="sans" style={{ fontSize: 13 }} onClick={addStudent}>+ Add student</button>
         </div>
-        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-          {students.map((s, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8, alignItems: "center" }}>
-              <input value={s.student_name} onChange={e => setStudent(i, "student_name", e.target.value)} placeholder="Student name" />
-              <input value={s.family_name} onChange={e => setStudent(i, "family_name", e.target.value)} placeholder="Family / parent" />
-              <input value={s.contact} onChange={e => setStudent(i, "contact", e.target.value)} placeholder="Contact (email or phone)" />
-              <button type="button" className="sans" style={{ fontSize: 12, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={() => removeStudent(i)}>✕</button>
-            </div>
-          ))}
+        <div style={{ display: "grid", gap: 10, marginTop: 8 }}>
+          {students.map((s, i) => {
+            const invoiceHref = `/provider/invoice/new?student=${encodeURIComponent(s.student_name || "")}&parent=${encodeURIComponent(s.family_name || "")}`;
+            const docHref = `/provider/document/new?title=${encodeURIComponent(name || "")}&subject=${encodeURIComponent(service || "")}`;
+            return (
+              <div key={i} style={{ borderBottom: "1px solid var(--line)", paddingBottom: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8, alignItems: "center" }}>
+                  <input value={s.student_name} onChange={e => setStudent(i, "student_name", e.target.value)} placeholder="Student name" />
+                  <input value={s.family_name} onChange={e => setStudent(i, "family_name", e.target.value)} placeholder="Family / parent" />
+                  <input value={s.contact} onChange={e => setStudent(i, "contact", e.target.value)} placeholder="Contact (email or phone)" />
+                  <button type="button" className="sans" style={{ fontSize: 12, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={() => removeStudent(i)}>✕</button>
+                </div>
+                {(s.student_name || "").trim() && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <Link href={invoiceHref} className="sans" style={{ fontSize: 12.5, color: "var(--navy2)" }}>Invoice this student →</Link>
+                    <span className="muted">·</span>
+                    <Link href={docHref} className="sans" style={{ fontSize: 12.5, color: "var(--navy2)" }}>Course document for this class →</Link>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
+        <p className="finenote" style={{ marginTop: 8 }}>Save the class first so your roster is kept — these links open a prefilled invoice or course document.</p>
       </div>
 
       <div style={{ marginTop: 12 }}>
