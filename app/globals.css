@@ -288,6 +288,16 @@ button.primary:hover{background:#194066;border-color:#194066}
   .lp-lane-k{width:100%}
   .lp-foot-links{margin-left:0;width:100%}
 }
+/* Phones: the landing nav uses <nav>, so the header-scoped .hide-sm never fired
+   and three buttons + the logo overflowed, clipping "Get started". Hide Pricing
+   (still reachable by scrolling) and tighten the two remaining buttons so the
+   logo + Log in + Get started always fit. */
+@media (max-width:520px){
+  .lp-nav .hide-sm{display:none}
+  .lp-nav-in{gap:6px}
+  .lp-nav-in .lp-btn-sm{padding:8px 11px;font-size:13px;border-radius:9px}
+  .lp-nav-in .lp-logo{height:40px}
+}
 
 /* Horizontal scroll areas (e.g. dashboard quick-action chips) without a visible scrollbar. */
 .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-11-11-ui-polish-2",
+    version: "2026-11-11-landing-nav-fix",
     note: "Notifications (#1) + error-handling loop (#2) + automated feature-request capture (#3, clustered, weekly digest, /admin/requests). Plus Cash App fix, branded share links, staff directory, price guide, admin Usage card.",
     served_at: new Date().toISOString(),
   });
