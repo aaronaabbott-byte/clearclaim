@@ -65,6 +65,11 @@ export default function UpdateModal() {
 
           <ul style={{ margin: 0, paddingLeft: 18, color: "#45506a" }}>
             <li style={{ marginBottom: 7 }}>
+              <b>Activity &amp; course checklists.</b> New guided checklists tell you exactly what an
+              extracurricular activity or co-curricular course needs to be approved, which documents to
+              attach, and can <b>write the justification for you</b>. Find them on your dashboard.
+            </li>
+            <li style={{ marginBottom: 7 }}>
               <b>Email reminders.</b> We'll email you when a claim you've marked ready is still missing a
               receipt, proof of payment, or note, and before the budget-year deadline. Turn these on or off
               in <b>Settings, under Email reminders</b>.

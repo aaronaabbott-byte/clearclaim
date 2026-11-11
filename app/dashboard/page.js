@@ -8,6 +8,7 @@ import { getProfile } from "@/lib/profile";
 import { schoolYearLabel } from "@/lib/compliance";
 import ComplianceTracker from "./compliance";
 import CocurricularGuide from "./cocurricular";
+import ExtracurricularGuide from "./extracurricular";
 import { Bar, KidForm } from "./students";
 import ClaimOutcome from "./claim-outcome";
 import PreapprovalStatus from "./preapproval-status";
@@ -256,6 +257,7 @@ export default async function Dashboard() {
         </div>
 
         {feat.coCurricularChecklist && <CocurricularGuide />}
+        {feat.coCurricularChecklist && <ExtracurricularGuide />}
 
         {feat.homeschoolCompliance && hasHomeschool && <ComplianceTracker userId={user.id} initialDone={complianceDone} />}
 

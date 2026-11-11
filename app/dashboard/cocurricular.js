@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { COCURRICULAR, checkCocurricular } from "@/lib/rules";
+import ActivityJustify from "./activity-justify";
 
 export default function CocurricularGuide() {
   const [open, setOpen] = useState(false);
@@ -75,6 +76,9 @@ export default function CocurricularGuide() {
               );
             })}
           </div>
+
+          <ActivityJustify type="cocurricular" name={className} provider={provider} checkedIds={checked}
+            notePlaceholder="e.g. the subject, what your student will learn, and how progress is assessed" />
 
           <details style={{ marginTop: 14 }}>
             <summary className="sans" style={{ cursor: "pointer", fontSize: 13.5, color: "var(--navy2)" }}>
