@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile, providerReady } from "@/lib/profile";
 import { Bar } from "@/app/dashboard/students";
 import InvoiceStatus from "./invoice-status";
+import DocShare from "./doc-share";
 
 export const dynamic = "force-dynamic";
 
@@ -143,6 +144,7 @@ export default async function ProviderHome() {
                       </div>
                       <InvoiceStatus id={v.id} status={v.status} />
                       <span className="sans" style={{ fontSize: 14, fontWeight: 700, color: "var(--navy2)" }}>${Number(v.total || 0).toFixed(2)}</span>
+                      <DocShare kind="invoice" refId={v.id} />
                     </div>
                   </Link>
                 ))}
@@ -166,11 +168,12 @@ export default async function ProviderHome() {
               <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                 {docs.map(d => (
                   <Link key={d.id} href={`/provider/document/${d.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-                    <div className="kid" style={{ alignItems: "center" }}>
-                      <div style={{ flex: 1 }}>
+                    <div className="kid" style={{ alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 160 }}>
                         <b>{d.title || d.subject || "Course"}</b>
                         <div className="muted sans" style={{ fontSize: 13 }}>{[d.subject, d.term].filter(Boolean).join(" · ")}</div>
                       </div>
+                      <DocShare kind="document" refId={d.id} />
                       <span className="sans" style={{ fontSize: 12.5, color: "var(--navy2)" }}>Open →</span>
                     </div>
                   </Link>
