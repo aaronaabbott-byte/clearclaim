@@ -165,6 +165,7 @@ export default async function Admin() {
           <span className="muted sans" style={{ fontSize: 13 }}>live snapshot</span>
           <span className="spacer" style={{ flex: 1 }} />
           <Link href="/admin/requests"><button className="sans" style={{ fontSize: 13 }}>Feature requests →</button></Link>
+          <Link href="/admin/csat"><button className="sans" style={{ fontSize: 13 }}>Satisfaction →</button></Link>
           <Link href="/admin/health"><button className="sans" style={{ fontSize: 13 }}>System health →</button></Link>
           <StatsExport stats={stats} accounts={users} trend={trend} />
         </div>
