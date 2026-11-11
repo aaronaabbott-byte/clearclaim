@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,14 +13,19 @@ export const maxDuration = 60;
 //
 // Protected by CRON_SECRET (Authorization: Bearer <secret>).
 
-function authorized(req) {
+// Allowed via CRON_SECRET (the scheduler) or a signed-in admin (manual trigger).
+async function authorized(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return (req.headers.get("authorization") || "") === `Bearer ${secret}`;
+  if (secret && (req.headers.get("authorization") || "") === `Bearer ${secret}`) return true;
+  try {
+    const { data: { user } } = await createClient().auth.getUser();
+    if (user && isAdmin(user.email)) return true;
+  } catch { /* not signed in */ }
+  return false;
 }
 
 export async function GET(req) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await authorized(req))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const origin = new URL(req.url).origin;
   const headers = { authorization: `Bearer ${process.env.CRON_SECRET}` };
   const out = {};
