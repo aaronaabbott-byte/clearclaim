@@ -138,8 +138,8 @@ export default async function Dashboard() {
             <Link href="/dashboard/preapproval/new"><button className="primary">+ New request</button></Link>
           </div>
           <p className="muted sans" style={{ fontSize: 13, marginTop: 8 }}>
-            Non-core purchases need the Department's approval before you buy, through its Google Form. We fill the form for you and
-            keep a log here, since the Department provides no tracking. Status is what you enter yourself.
+            Non-core purchases need the Department's approval before you buy, through the online pre-approval portal. We prepare your
+            answers to paste in and keep a log here, since the Department provides no tracking. Status is what you enter yourself.
           </p>
           {(preapprovals && preapprovals.length > 0) && (
             <div style={{ marginTop: 12, display: "grid", gap: 8 }}>

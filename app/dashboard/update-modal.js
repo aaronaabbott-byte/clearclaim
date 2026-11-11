@@ -75,12 +75,12 @@ export default function UpdateModal() {
               in <b>Settings, under Email reminders</b>.
             </li>
             <li style={{ marginBottom: 7 }}>
-              <b>Shareable document links.</b> Generate a clean link for any uploaded document to paste into
-              the pre-approval form.
+              <b>Shareable document links.</b> Generate a clean link for any uploaded document — handy when
+              you'd rather share a link than upload a file.
             </li>
             <li>
-              <b>Behind the scenes.</b> Faster, more reliable claim handling and quicker fixes when something
-              goes wrong.
+              <b>New pre-approval portal.</b> Arkansas moved pre-approval to an online portal (it's no longer a
+              Google Form, and it now takes document uploads). Our Pre-approvals tool preps your answers to paste in.
             </li>
           </ul>
         </div>

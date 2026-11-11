@@ -139,7 +139,7 @@ export default function DocumentLibrary({ userId, kids, documents }) {
         ) : (
           <>
           <p className="finenote" style={{ marginTop: -4, marginBottom: 8 }}>
-            "Get link" makes a shareable clearclaimapp.com link — handy for pasting into the pre-approval form, which only takes links.
+            "Get link" makes a shareable clearclaimapp.com link — handy when you'd rather share a link than upload a file (the pre-approval portal now accepts uploads directly, so links are optional).
             It stays live until you turn it off, and anyone with the link can open that file, so only share what you're comfortable with.
           </p>
           <div style={{ display: "grid", gap: 8 }}>

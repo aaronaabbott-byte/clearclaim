@@ -2,7 +2,7 @@
 import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CRITERIA, COST_NOTE, buildPrefillUrl } from "@/lib/preapproval";
+import { CRITERIA, COST_NOTE, buildRequestSummary, PORTAL_URL, LEARNING_WORD_LIMIT, wordCount } from "@/lib/preapproval";
 import { detectTech, LIMITATION_CHIPS, PER_DEVICE_REVIEW, CAP_EXCEED, TECH_CAP, TECH_PRIVACY_NOTE } from "@/lib/technology";
 
 const money = (n) => `$${(Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -32,6 +32,7 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [sumCopied, setSumCopied] = useState(false);
 
   // Supporting-document attachments + opt-in shareable links (the ADE form only
   // takes links, not uploads). Signed links are per-file and opt-in.
@@ -141,7 +142,9 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
     setAiBusy(false);
   }
 
-  const prefillUrl = buildPrefillUrl({ email, parentName, students, description, cost, justification, link });
+  const requestSummary = buildRequestSummary({ email, parentName, students, description, cost, justification, link });
+  const justWords = wordCount(justification);
+  const overWordLimit = justWords > LEARNING_WORD_LIMIT;
 
   async function saveLog(status) {
     setErr(""); setMsg(""); setBusy(true);
@@ -168,8 +171,8 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
       <div className="card">
         <h2>{editing ? "Edit pre-approval request" : "Pre-approval request"}</h2>
         <p className="muted sans" style={{ fontSize: 14, marginTop: -4 }}>
-          Non-core expenses need the Department's approval before you buy, through its Google Form.
-          Fill this in, we open the form already filled out, and you review and submit it. ClearClaim never submits for you.
+          Non-core expenses need the Department's approval before you buy, through the online pre-approval portal.
+          Fill this in and we'll prepare your answers and a strong justification; then you open the portal, paste them in, and submit. ClearClaim never submits for you.
         </p>
 
         <div className="row">
@@ -207,11 +210,16 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
         )}
 
         <div style={{ marginTop: 12 }}>
-          <label>Why it is necessary (the long field that carries the request)</label>
+          <label>How this connects to your student's learning (the portal's main field)</label>
           <textarea rows={6} value={justification} onChange={e => setJustification(e.target.value)} placeholder="Explain how this supports the student's learning. Or let AI draft it, then edit." />
-          <button type="button" className="primary" onClick={() => generate()} disabled={aiBusy} style={{ marginTop: 8 }}>
-            {aiBusy ? "Drafting…" : "✨ Draft the justification"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+            <button type="button" className="primary" onClick={() => generate()} disabled={aiBusy}>
+              {aiBusy ? "Drafting…" : "✨ Draft the justification"}
+            </button>
+            <span className="sans" style={{ fontSize: 12.5, color: overWordLimit ? "var(--red)" : "var(--muted)" }}>
+              {justWords} / {LEARNING_WORD_LIMIT} words{overWordLimit ? " — the portal caps this field; trim it down" : ""}
+            </span>
+          </div>
         </div>
 
         <div style={{ marginTop: 10 }}>
@@ -223,20 +231,20 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
         {msg && <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>}
       </div>
 
-      {/* Supporting documents + opt-in shareable links (the ADE form takes links, not uploads) */}
+      {/* Supporting documents. The new portal accepts uploads directly, so links
+          are now optional (handy if you'd rather link than upload). */}
       <div className="card">
-        <h2 style={{ margin: 0 }}>Supporting documents &amp; links</h2>
+        <h2 style={{ margin: 0 }}>Supporting documents</h2>
         <p className="muted sans" style={{ fontSize: 13.5, marginTop: 6 }}>
-          The Department's pre-approval form can't accept file uploads — only links. Upload your supporting documents here
-          (a curriculum or supply list, an item page, a therapist/provider note), make a shareable link for each, and paste
-          the link into the form's link field. The files also stay here as your record.
+          The new pre-approval portal lets you <b>upload supporting documents directly</b> (a syllabus or class plan, a
+          curriculum or supply list, an item page, a therapist/provider note). Keep your files here as your record, then
+          upload them on the portal. If you'd rather share a link than upload a file, you can still make one below — it's optional now.
         </p>
         <div style={{ border: "1px solid #e7d3a6", background: "#fdf7e8", borderRadius: 10, padding: "10px 12px", marginTop: 8 }}>
           <p className="sans" style={{ fontSize: 12.5, color: "#4a4636", margin: 0, lineHeight: 1.5 }}>
-            <b>Before you make a link:</b> anyone who has the link can open that file — the reviewer's form has no login — and the
-            link works for about 6 months. Only make a link for a document you're comfortable sharing with the reviewer, and
-            don't link anything you wouldn't put in the request. For a medical or therapist note, share only what the request
-            actually needs.
+            <b>If you make a link:</b> anyone who has it can open that file — no login — and it works for about 6 months. Only
+            make a link for a document you're comfortable sharing with the reviewer. For a medical or therapist note, share
+            only what the request actually needs. Uploading directly in the portal avoids this entirely.
           </p>
         </div>
         <div className="row" style={{ marginTop: 10 }}>
@@ -286,7 +294,7 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
                   </div>}
               </div>
             ))}
-            <p className="finenote">Paste these links into the pre-approval form's link field. Each link opens the file from clearclaimapp.com and stays live until you turn it off — anyone with the link can view that file, so only share what you're comfortable with.</p>
+            <p className="finenote">Optional: paste a link into the portal instead of uploading the file. Each link opens the file from clearclaimapp.com and stays live until you turn it off — anyone with the link can view that file, so only share what you're comfortable with.</p>
           </div>}
       </div>
 
@@ -383,22 +391,39 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
         </div>
       </div>
 
-      {/* Open the form + walkthrough */}
+      {/* Open the portal + copy-in walkthrough */}
       <div className="card">
-        <h2>Open the form, filled in</h2>
+        <h2>Send it on the portal</h2>
+        <p className="muted sans" style={{ fontSize: 13.5, marginTop: 6 }}>
+          The pre-approval portal is its own site, so you paste your answers in rather than ClearClaim filling them. Here's everything ready to copy.
+        </p>
         <ol className="sans" style={{ fontSize: 14, lineHeight: 1.7, paddingLeft: 20 }}>
-          <li>Open the pre-approval form. Every field is filled from what you entered above.</li>
-          <li>Read each field and fix anything.</li>
-          <li>Turn on <b>"Send me a copy of my responses"</b> near the bottom. That emailed copy is your only record.</li>
-          <li>Click <b>Submit</b> on the form. ClearClaim does not submit it for you.</li>
+          <li>Open the pre-approval portal.</li>
+          <li>Copy your answers below and paste them into the matching fields. Pick the purchase category, and answer whether it's for a specific class.</li>
+          <li>Upload your supporting documents (or paste a link from above).</li>
+          <li>Use the portal's own <b>"Check my request"</b>, then submit. ClearClaim does not submit it for you.</li>
         </ol>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-          <a href={prefillUrl} target="_blank" rel="noopener noreferrer"><button className="primary">Open the pre-approval form ↗</button></a>
+
+        <label className="sans" style={{ fontSize: 13, fontWeight: 600, marginTop: 6, display: "block" }}>Your answers to paste</label>
+        <textarea readOnly value={requestSummary} rows={9}
+          onFocus={e => e.target.select()}
+          style={{ width: "100%", fontSize: 13, boxSizing: "border-box", lineHeight: 1.5, marginTop: 4 }} />
+        <button type="button" className="sans" style={{ fontSize: 13, marginTop: 6 }}
+          onClick={() => { try { navigator.clipboard.writeText(requestSummary); setSumCopied(true); setTimeout(() => setSumCopied(false), 2000); } catch { /* ignore */ } }}>
+          {sumCopied ? "Copied" : "Copy my answers"}
+        </button>
+        {overWordLimit &&
+          <p className="finenote" style={{ color: "var(--red)", marginTop: 6 }}>
+            Your learning-connection answer is over the portal's {LEARNING_WORD_LIMIT}-word limit ({justWords} words) — trim it above before you paste.
+          </p>}
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+          <a href={PORTAL_URL} target="_blank" rel="noopener noreferrer"><button className="primary">Open the pre-approval portal ↗</button></a>
           <button type="button" disabled={busy} onClick={() => saveLog("draft")}>Save to my log</button>
           <button type="button" disabled={busy} onClick={() => saveLog("submitted")}>I submitted it — log as submitted</button>
         </div>
         <p className="finenote" style={{ marginTop: 12 }}>
-          ClearClaim has no connection to the Department and cannot see your request's status. You update the status yourself in your log.
+          Keep the confirmation the portal gives you — that's your record. ClearClaim has no connection to the Department and cannot see your request's status; you update the status yourself in your log.
           This is guidance based on published rule text, not a decision. The Department decides, and approval is not guaranteed.
         </p>
       </div>

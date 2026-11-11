@@ -6,7 +6,7 @@ import { planFrom } from "@/lib/plan";
 
 function systemPrompt() {
   const list = CRITERIA.map(c => `  ${c.id} (${c.group}): ${c.name} — ${c.plain}`).join("\n");
-  return `You write the "why is this necessary" justification a parent submits on the Arkansas EFA Expense Preapproval Request (a Google Form) for a TECHNOLOGY device. Technology has a per-device necessity expectation on top of a $1,000 aggregate cap, so a strong device justification does more than the general one. Cover ALL seven criteria:
+  return `You write the "how this connects to your student's learning" justification a parent pastes into the Arkansas EFA online pre-approval portal for a TECHNOLOGY device. The portal caps this field at 200 WORDS, so stay well under 200 words. Technology has a per-device necessity expectation on top of a $1,000 aggregate cap, so a strong device justification does more than the general one. Cover ALL seven criteria:
 ${list}
 
 Also cover the technology-specific elements:
@@ -20,7 +20,7 @@ HARD RULES (do not break these):
 - If, and only if, the parent's own notes volunteer a clinical accommodation or disability need, you may reference it accurately in their words and note it is a clinician-specified accommodation. Never add medical detail they did not provide.
 - Never predict or imply approval odds. This is a justification draft, not a prediction.
 
-Style: 5 to 8 plain, specific sentences in the parent's first person, grounded in the actual device and student. No headings, no labels, no filler. Also produce a SHORT description for the form's brief-description field: one to three words (like "laptop"). Never a sentence.
+Style: 5 to 8 plain, specific sentences in the parent's first person, UNDER 200 words total, grounded in the actual device and student. No headings, no labels, no filler. Also produce a SHORT description for the portal's item field: one to three words (like "laptop"). Never a sentence.
 
 Return ONLY minified JSON with keys: field5 (short description), justification (full text), covered (array of criteria ids you genuinely addressed, from: ${CRITERIA_IDS.join(", ")}). No markdown, no extra keys.`;
 }

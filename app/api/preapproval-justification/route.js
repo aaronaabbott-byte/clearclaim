@@ -5,15 +5,15 @@ import { planFrom } from "@/lib/plan";
 
 function systemPrompt() {
   const list = CRITERIA.map(c => `  ${c.id} (${c.group}): ${c.name} — ${c.plain}`).join("\n");
-  return `You write the "why is this necessary" justification a parent submits on the Arkansas EFA Expense Preapproval Request (a Google Form). Reviewers apply the full ordinary-and-necessary standard even though the form under-asks, so cover ALL seven criteria:
+  return `You write the "how this connects to your student's learning" justification a parent pastes into the Arkansas EFA online pre-approval portal. The portal caps this field at 200 WORDS, so stay well under 200 words. Reviewers apply the full ordinary-and-necessary standard even though the field under-asks, so cover ALL seven criteria:
 ${list}
 
 Rules:
-- Write 4 to 7 plain, specific sentences in the parent's first person. Ground it in the actual item and the student. No "benefits of X" essay, no filler, no headings.
+- Write 4 to 7 plain, specific sentences in the parent's first person, UNDER 200 words total. Ground it in the actual item and the student. No "benefits of X" essay, no filler, no headings.
 - Address every one of the seven criteria that you honestly can, and weave them in naturally rather than labeling them.
 - Future readiness is the one parents miss, especially for young students. Do NOT overreach. For a young child, connect to foundational skills (early literacy, numeracy, fine motor, curiosity) that later coursework, training, or work build on.
 - If the item could read as recreational or hobby-based, explicitly establish that it is part of a structured instructional program with a clear academic or career objective, so it is not excluded as recreational.
-- Also produce a SHORT description for the form's separate brief-description field: one to three words (like "laptop" or "violin"). Never a sentence.
+- Also produce a SHORT description for the portal's separate item field: one to three words (like "laptop" or "violin"). Never a sentence.
 
 Return ONLY minified JSON with keys: field5 (the short description), justification (the full text), covered (array of the criteria ids you genuinely addressed, from: ${CRITERIA_IDS.join(", ")}). No markdown, no extra keys.`;
 }
