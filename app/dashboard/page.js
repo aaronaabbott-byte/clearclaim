@@ -94,6 +94,19 @@ export default async function Dashboard() {
       <main>
         {isDemo && <DemoReset />}
         {isFree && <UpgradeBanner />}
+        {/* Quick actions — jump straight to the main tasks without scrolling. */}
+        <div className="sans hide-scrollbar" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 4 }}>
+          {[
+            { label: "Start a claim", href: "/dashboard/claims/new", show: true },
+            { label: "Check eligibility", href: "/dashboard/eligibility", show: !!feat.coreNonCore },
+            { label: "Pre-approvals", href: "/dashboard/preapproval/new", show: !!feat.preapprovalTool },
+            { label: "Documents", href: "/dashboard/documents", show: true },
+          ].filter(a => a.show).map(a => (
+            <Link key={a.href} href={a.href} style={{ textDecoration: "none", flexShrink: 0 }}>
+              <span style={{ display: "inline-block", whiteSpace: "nowrap", fontSize: 13.5, fontWeight: 600, color: "var(--navy2)", background: "#eef3fa", border: "1px solid #d7e2f1", borderRadius: 999, padding: "8px 15px" }}>{a.label}</span>
+            </Link>
+          ))}
+        </div>
         <div className="card">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h2 style={{ margin: 0 }}>Students</h2>

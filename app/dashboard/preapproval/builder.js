@@ -177,7 +177,7 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
 
         <div className="row">
           <div><label>Parent / guardian name</label><input value={parentName} onChange={e => setParentName(e.target.value)} /></div>
-          <div><label>Your email (the form asks twice)</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
+          <div><label>Your email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
         </div>
 
         <div style={{ marginTop: 10 }}>
@@ -190,7 +190,7 @@ export default function PreapprovalBuilder({ kids, userEmail, documents = [], ex
         </div>
 
         <div className="row" style={{ marginTop: 10 }}>
-          <div><label>Description (keep it short — the form wants "laptop", not a sentence)</label><input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. laptop" /></div>
+          <div><label>Description (keep it short — "laptop", not a sentence)</label><input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. laptop" /></div>
           <div><label>Anticipated cost (item price)</label><input value={cost} onChange={e => setCost(e.target.value)} inputMode="decimal" placeholder="e.g. 499" /></div>
         </div>
         <p className="finenote" style={{ marginTop: 6 }}>{COST_NOTE}</p>

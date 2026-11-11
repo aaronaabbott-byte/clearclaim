@@ -709,8 +709,12 @@ export default function ClaimBuilder({
 
       {/* Live rules check */}
       <div style={{ marginTop: 16, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", background: "#fbfaf7" }}>
-        <div className="sans" style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: "var(--navy)" }}>
+        <div className="sans" style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, color: "var(--navy)" }}>
           Pre-submission check {blocking ? `· ${blocking} to fix` : "· looks ready"}
+        </div>
+        <div className="sans" style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <span><span style={{ color: DOT.fail, fontWeight: 700 }}>✗</span> must fix before submitting</span>
+          <span><span style={{ color: DOT.warn, fontWeight: 700 }}>!</span> recommended</span>
         </div>
         <div style={{ display: "grid", gap: 6 }}>
           {checks.map((c, i) => (
@@ -733,9 +737,13 @@ export default function ClaimBuilder({
         : <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>
       )}
 
+      {blocking > 0 &&
+        <p className="sans" style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 12, marginBottom: -4 }}>
+          With {blocking} item{blocking > 1 ? "s" : ""} still to fix, this saves as a <b>draft</b> — finish the ✗ items above to mark it ready to submit.
+        </p>}
       <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
         <button className="primary" disabled={busy} onClick={saveAndBuild}>
-          {busy ? "Working…" : (editing ? "Save changes & download packet" : "Save claim & download packet")}
+          {busy ? "Working…" : blocking ? "Save draft & download" : (editing ? "Save changes & download packet" : "Save claim & download packet")}
         </button>
         <button type="button" disabled={busy} onClick={downloadPacket}>Download packet only</button>
         {editing && <button type="button" disabled={busy} onClick={deleteClaim} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete claim</button>}

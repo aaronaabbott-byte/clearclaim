@@ -10,7 +10,9 @@ export default async function DashboardLayout({ children }) {
   const { plan } = await userPlan();
   return (
     <>
-      {children}
+      {/* Extra bottom room so the floating Ask Ann button never sits on top of
+          the last controls on a page (Cancel, Save, etc.). */}
+      <div style={plan.family ? { paddingBottom: "6rem" } : undefined}>{children}</div>
       {plan.family && <AskAnn />}
       <UpdateModal />
       <CsatPopup />

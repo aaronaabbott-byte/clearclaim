@@ -20,9 +20,19 @@ export default function HeaderMenu({ items = [] }) {
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
           <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 41, background: "#fff",
             border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 10px 30px rgba(20,30,45,.18)", minWidth: 200, overflow: "hidden" }}>
-            {items.map((it, i) => (
-              <Link key={i} href={it.href} onClick={() => setOpen(false)} style={linkStyle}>{it.label}</Link>
-            ))}
+            {items.map((it, i) => {
+              const newGroup = it.group && it.group !== items[i - 1]?.group;
+              return (
+                <div key={i}>
+                  {newGroup && (
+                    <div className="sans" style={{ padding: "9px 16px 4px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", background: "#f7f9fc", borderBottom: "1px solid var(--line)" }}>
+                      {it.group}
+                    </div>
+                  )}
+                  <Link href={it.href} onClick={() => setOpen(false)} style={linkStyle}>{it.label}</Link>
+                </div>
+              );
+            })}
             <form action={signOut}>
               <button type="submit" style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 16px",
                 background: "#fff", border: "none", color: "var(--red)", fontFamily: "var(--sans)", fontSize: 14.5, cursor: "pointer" }}>

@@ -36,14 +36,15 @@ export default function UpdateModal() {
         style={{
           background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
           boxShadow: "0 20px 60px rgba(15,22,36,.35)", overflow: "hidden",
+          maxHeight: "90vh", display: "flex", flexDirection: "column",
         }}
       >
-        <div style={{ background: "#15264b", padding: "16px 22px", color: "#fff" }}>
+        <div style={{ background: "#15264b", padding: "16px 22px", color: "#fff", flexShrink: 0 }}>
           <div style={{ fontSize: 12.5, letterSpacing: ".08em", textTransform: "uppercase", opacity: .8 }}>What's new</div>
           <div style={{ fontSize: 19, fontWeight: 700, marginTop: 2 }}>A few updates to ClearClaim</div>
         </div>
 
-        <div style={{ padding: "20px 22px", color: "#1f2a44", fontSize: 14.5, lineHeight: 1.55 }}>
+        <div style={{ padding: "20px 22px", color: "#1f2a44", fontSize: 14.5, lineHeight: 1.55, overflowY: "auto", flex: 1, minHeight: 0 }}>
           <p style={{ margin: "0 0 14px" }}>
             We shipped some improvements to make reimbursements easier:
           </p>
@@ -85,7 +86,7 @@ export default function UpdateModal() {
           </ul>
         </div>
 
-        <div style={{ padding: "0 22px 20px", display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ padding: "14px 22px 18px", display: "flex", justifyContent: "flex-end", flexShrink: 0, borderTop: "1px solid #eef1f7" }}>
           <button
             type="button"
             onClick={dismiss}

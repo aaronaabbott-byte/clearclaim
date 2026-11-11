@@ -288,3 +288,7 @@ button.primary:hover{background:#194066;border-color:#194066}
   .lp-lane-k{width:100%}
   .lp-foot-links{margin-left:0;width:100%}
 }
+
+/* Horizontal scroll areas (e.g. dashboard quick-action chips) without a visible scrollbar. */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }

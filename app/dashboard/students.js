@@ -102,28 +102,34 @@ export function KidEdit({ k, bare = false, showAward = false, showTier = true, p
 // `admin` shows an Admin link; `providerView` / `parentView` show cross-links
 // between the two views (only for accounts that have both roles).
 export function Bar({ email, settings = true, admin = false, providerView = false, parentView = false, feat = {} }) {
+  // Grouped navigation. `group` labels a section; HeaderMenu draws a small header
+  // the first time a new group appears, so the menu reads as a few short lists
+  // instead of one long one.
   const items = [];
-  if (providerView) items.push({ label: "Provider view", href: "/provider" });
-  if (parentView) items.push({ label: "Parent view", href: "/dashboard" });
+  if (providerView) items.push({ label: "Provider view", href: "/provider", group: "Switch" });
+  if (parentView) items.push({ label: "Parent view", href: "/dashboard", group: "Switch" });
   // Full navigation to the main parent-side destinations (hidden on the provider
   // view, where `parentView` is set). The eligibility and pre-approval tools are
   // Arkansas-specific advisory features, so they only appear when the account's
   // state enables them.
   if (!parentView) {
     items.push({ label: "Dashboard", href: "/dashboard" });
-    items.push({ label: "Start a claim", href: "/dashboard/claims/new" });
-    if (feat.coreNonCore) items.push({ label: "Check eligibility", href: "/dashboard/eligibility" });
-    items.push({ label: "Documents", href: "/dashboard/documents" });
-    items.push({ label: "Devices & plans", href: "/dashboard/devices" });
-    if (feat.preapprovalTool) items.push({ label: "Pre-approvals", href: "/dashboard/preapproval/new" });
-    if (feat.vendorDirectory) items.push({ label: "Find a vendor", href: "/dashboard/vendors" });
-    if (feat.denialFixer) items.push({ label: "Fix a denied claim", href: "/dashboard/fix" });
-    items.push({ label: "How to submit", href: "/dashboard/submit-steps" });
-    items.push({ label: "Students & budget", href: "/dashboard/settings" });
+    // Do
+    items.push({ label: "Start a claim", href: "/dashboard/claims/new", group: "Do" });
+    if (feat.coreNonCore) items.push({ label: "Check eligibility", href: "/dashboard/eligibility", group: "Do" });
+    if (feat.preapprovalTool) items.push({ label: "Pre-approvals", href: "/dashboard/preapproval/new", group: "Do" });
+    if (feat.denialFixer) items.push({ label: "Fix a denied claim", href: "/dashboard/fix", group: "Do" });
+    // Organize
+    items.push({ label: "Documents", href: "/dashboard/documents", group: "Organize" });
+    items.push({ label: "Devices & plans", href: "/dashboard/devices", group: "Organize" });
+    items.push({ label: "Students & budget", href: "/dashboard/settings", group: "Organize" });
+    // Help
+    if (feat.vendorDirectory) items.push({ label: "Find a vendor", href: "/dashboard/vendors", group: "Help" });
+    items.push({ label: "How to submit", href: "/dashboard/submit-steps", group: "Help" });
   }
-  if (settings && parentView) items.push({ label: "Settings", href: "/dashboard/settings" });
-  items.push({ label: "Plans & billing", href: "/upgrade" });
-  if (admin) items.push({ label: "Admin", href: "/admin" });
+  if (settings && parentView) items.push({ label: "Settings", href: "/dashboard/settings", group: "Account" });
+  items.push({ label: "Plans & billing", href: "/upgrade", group: "Account" });
+  if (admin) items.push({ label: "Admin", href: "/admin", group: "Account" });
   return (
     <header>
       <img src="/wordmark-white.png" alt="ClearClaim" height="56" style={{ display: "block" }} />
