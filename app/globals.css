@@ -5,7 +5,7 @@
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --sh:0 1px 2px rgba(20,30,45,.04),0 10px 30px rgba(20,30,45,.06);
   --ring:0 0 0 3px rgba(31,78,120,.16);
-  --radius:16px;
+  --radius:8px;
 }
 *{box-sizing:border-box}
 body{margin:0;font:17.5px/1.6 var(--serif);
@@ -26,20 +26,20 @@ header h1{font-family:var(--serif);font-size:24px;margin:0;font-weight:600}
 main{max-width:920px;margin:0 auto;padding:26px 20px}
 
 /* Cards */
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+.card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--navy);border-radius:var(--radius);
   padding:22px;margin-bottom:16px;box-shadow:var(--sh)}
 h2{font-family:var(--serif);font-size:23px;line-height:1.2;margin:0 0 10px;letter-spacing:.2px;color:var(--navy)}
 h3{color:var(--navy)}
 
 /* Forms */
 label{display:block;font:600 12px var(--sans);letter-spacing:.3px;text-transform:none;color:var(--muted);margin-bottom:6px}
-input,select,textarea{font:inherit;font-size:15px;padding:11px 13px;border:1px solid #ddd6c8;border-radius:11px;width:100%;background:#fff;color:var(--ink);transition:border-color .15s ease,box-shadow .15s ease}
+input,select,textarea{font:inherit;font-size:15px;padding:11px 13px;border:1px solid #ddd6c8;border-radius:5px;width:100%;background:#fff;color:var(--ink);transition:border-color .15s ease,box-shadow .15s ease}
 input::placeholder,textarea::placeholder{color:#a9a99f}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy2);box-shadow:var(--ring)}
 
 /* Buttons */
-button{font:inherit;font-size:15px;cursor:pointer;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 16px;font-weight:600;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .05s ease}
-button:hover{background:#faf8f3;border-color:#d7d0bf}
+button{font:inherit;font-size:15px;cursor:pointer;border-radius:5px;border:1px solid var(--navy);background:#fff;color:var(--navy);padding:10px 16px;font-weight:600;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .05s ease}
+button:hover{background:#eef2f7;border-color:var(--navy)}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.55;cursor:default;transform:none}
 button.primary{background:var(--navy2);color:#fff;border-color:var(--navy2);box-shadow:0 1px 2px rgba(20,30,45,.12)}
@@ -57,7 +57,7 @@ button.primary:hover{background:#194066;border-color:#194066}
 .authcard .tag{color:var(--muted);margin-bottom:22px;display:block}
 
 /* Rows / list items */
-.kid{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:10px;background:#fff;box-shadow:0 1px 2px rgba(20,30,45,.04);transition:border-color .15s ease,box-shadow .15s ease}
+.kid{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:10px;background:#fff;box-shadow:0 1px 2px rgba(20,30,45,.04);transition:border-color .15s ease,box-shadow .15s ease}
 .kid:hover{border-color:#dcd5c6;box-shadow:0 2px 4px rgba(20,30,45,.05),0 8px 20px rgba(20,30,45,.05)}
 
 .sitefoot{font:400 12px/1.55 var(--sans);color:var(--muted);text-align:center;padding:24px 20px 34px;max-width:840px;margin:0 auto}
@@ -72,7 +72,7 @@ button.primary:hover{background:#194066;border-color:#194066}
   header img{height:46px !important}
   header button{padding:8px 12px;font-size:13.5px}
   main{padding:18px 14px}
-  .card{padding:16px;border-radius:14px}
+  .card{padding:16px;border-radius:8px}
   h2{font-size:20px}
   .authcard{padding:30px 20px}
 }
