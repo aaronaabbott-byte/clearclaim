@@ -1,0 +1,804 @@
+"use client";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { PATHWAYS, PATHWAY_FIELDS, CATEGORIES, checkClaim, draftReasoning,
+  categoryCap, efaBudgetYear, inBudgetYear, priorCapSpend, splitEqualCents, buildSplitNote } from "@/lib/rules";
+import { checkClaimAZ } from "@/lib/states/az-rules";
+import { checkClaimUT, utCaps, utCategoryCapKey } from "@/lib/states/ut-rules";
+import { getStateConfig } from "@/lib/states";
+import { diagnoseDenial, VERDICT_LABEL } from "@/lib/denials";
+const STATE_CHECKERS = { AZ: checkClaimAZ, UT: checkClaimUT };
+const DX_STYLE = {
+  fixable: { bg: "#eef7f1", bd: "#bfe0cd", fg: "#1f6b45" },
+  conditional: { bg: "#fdf7e8", bd: "#e7d3a6", fg: "#8a6d1a" },
+  ineligible: { bg: "#fbeeee", bd: "#e3b7b3", fg: "#9a2b25" },
+  unclear: { bg: "#eef2f8", bd: "#c3d6ea", fg: "#274b76" },
+};
+const isTechCategory = (category) => (categoryCap(category) || {}).key === "technology";
+const uuid = () => (crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+import { buildPacketPdfs } from "@/lib/packet";
+
+const DOT = { ok: "var(--teal)", warn: "var(--gold)", fail: "var(--red)" };
+const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
+
+// File picker that appends (never replaces), offers a phone-camera capture, and
+// lists what's attached with a remove control.
+function FileField({ files, onAdd, onRemove, hint }) {
+  const btn = { fontSize: 13, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", display: "inline-block" };
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+        <label style={btn}>
+          + Add file
+          <input type="file" accept="image/*,.heic,.heif,application/pdf" multiple style={{ display: "none" }}
+            onChange={e => { onAdd(e.target.files); e.target.value = ""; }} />
+        </label>
+        <label style={{ ...btn, color: "var(--navy2)", borderColor: "var(--navy2)" }}>
+          📷 Take photo
+          <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+            onChange={e => { onAdd(e.target.files); e.target.value = ""; }} />
+        </label>
+      </div>
+      {files.length > 0 ? (
+        <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+          {files.map((f, i) => (
+            <div key={i} className="sans" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+              <button type="button" onClick={() => onRemove(i)} style={{ color: "var(--red)", borderColor: "#e3b7b3", padding: "1px 7px", fontSize: 12 }}>Remove</button>
+            </div>
+          ))}
+        </div>
+      ) : <div className="muted sans" style={{ fontSize: 12, marginTop: 6 }}>{hint}</div>}
+    </div>
+  );
+}
+
+export default function ClaimBuilder({
+  kids, userId, claims = [], documents = [], initialItems = "", initialNote = "", prefill = {}, premium = false,
+  existing = null,
+  state = "AR",
+  categories = CATEGORIES,
+  pathways = PATHWAYS,
+  pathwayFields = PATHWAY_FIELDS,
+  features = { splitReimbursement: true, techCap: true, percentCaps: true },
+}) {
+  const runCheck = STATE_CHECKERS[state] || checkClaim;
+  const platform = getStateConfig(state)?.platform || "the portal";
+  const showCaps = !!(features.techCap || features.percentCaps);
+  const editing = !!existing;
+  // If this saved claim was marked denied with a reason, diagnose it so the edit
+  // view can show what to fix right up top.
+  const denialDx = (editing && existing?.outcome === "denied" && (existing?.outcome_reason || "").trim())
+    ? diagnoseDenial(existing.outcome_reason, { items: existing.items, category: existing.category })
+    : null;
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [kidId, setKidId] = useState(
+    existing?.kid_id || ((prefill.kidId && kids.some(k => k.id === prefill.kidId)) ? prefill.kidId : (kids[0]?.id || "")));
+  const [pathway, setPathway] = useState(existing?.pathway || "reimbursement");
+  const [vendor, setVendor] = useState(existing?.vendor || prefill.vendor || "");
+  const [amount, setAmount] = useState(existing?.amount != null ? String(existing.amount) : (prefill.amount || ""));
+  const [basePrice, setBasePrice] = useState(existing?.base_price != null ? String(existing.base_price) : "");
+  const [date, setDate] = useState(existing?.date || "");
+  const [category, setCategory] = useState(existing?.category || prefill.category || "");
+  const [items, setItems] = useState(existing?.items || initialItems);
+  const [purpose, setPurpose] = useState(existing?.purpose || initialNote);
+  const [reasoning, setReasoning] = useState(existing?.reasoning || "");
+  const [receipts, setReceipts] = useState([]);   // File[] (newly added this session)
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanMsg, setScanMsg] = useState("");
+  const [payments, setPayments] = useState([]);    // File[] (newly added this session)
+  const [supporting, setSupporting] = useState([]); // File[] — proof of enrollment, curriculum, letters, etc.
+  const [keptFiles, setKeptFiles] = useState(Array.isArray(existing?.files) ? existing.files : []); // already-stored {path,kind,name}
+  const [vaultPicks, setVaultPicks] = useState([]); // document ids to attach
+  const [splitOn, setSplitOn] = useState(false);
+  const [splitIds, setSplitIds] = useState([]);     // kid ids sharing this receipt
+  const [splitMode, setSplitMode] = useState("equal"); // equal | custom
+  const [customAmt, setCustomAmt] = useState({});   // { kidId: "12.34" }
+  const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  const kid = kids.find(k => k.id === kidId);
+  const fields = (pathwayFields || PATHWAY_FIELDS)[pathway] || {};
+
+  // Reported-practice flag (not a 6 CAR Part 35 rule): families say services,
+  // tutoring, and Direct Pay tend to want the student's name on the invoice,
+  // while parent-name receipts are generally fine for physical supplies.
+  const needsStudentName = pathway === "directpay" || /tutor|instructional services|lesson|tuition|therapy/i.test(category || "");
+
+  // Mileage / travel claims are the classic "build it over the month" case:
+  // keep one claim open and add each trip's receipt as you go, then submit once.
+  const mileageClaim = /(travel|mileage|transportation|field\s*trip)/i.test([category, items, purpose].join(" "));
+
+  const techCat = isTechCategory(category) && features.techCap;
+  const base_price = techCat && Number(basePrice) > 0 ? Number(basePrice) : null;
+  const claim = { vendor, pathway, amount, base_price, date, category, items, purpose, reasoning,
+    receipt_count: receipts.length, payment_count: payments.length };
+
+  // Running budget for the annual caps (tech $1,000; two separate 25% caps).
+  // Only states with caps (Arkansas) show this.
+  const cap = showCaps ? categoryCap(category, kid?.funding_tier) : null;
+  const by = efaBudgetYear(date);
+  const prior = cap ? priorCapSpend(claims, kidId, cap.key, by) : 0;
+  const amt = Number(amount) || 0;
+  // The tech cap counts base price (pre-tax, pre-shipping) when provided.
+  const capAmt = techCat && base_price ? base_price : amt;
+  const projected = prior + capAmt;
+  const overBy = cap ? projected - cap.amount : 0;
+
+  // Utah caps: a percentage of the student's award (transportation is flat $750).
+  const utKey = state === "UT" ? utCategoryCapKey(category) : null;
+  const utCap = utKey ? utCaps(Number(kid?.award_amount) || 0).find(c => c.key === utKey) : null;
+  const utPrior = utCap ? (claims || [])
+    .filter(c => c.kid_id === kidId && utCategoryCapKey(c.category) === utKey && inBudgetYear(c, by))
+    .reduce((s, c) => s + (Number(c.amount) || 0), 0) : 0;
+  const utProjected = utPrior + amt;
+
+  const checks = useMemo(() => {
+    const base = runCheck(claim);
+    if (cap && capAmt > 0) {
+      base.push({
+        level: overBy > 0 ? "fail" : (projected > cap.amount * 0.85 ? "warn" : "ok"),
+        msg: `${cap.label} budget ${by.label}: ${money(prior)} already counted + ${money(capAmt)}`
+          + (techCat && base_price ? " (base price)" : "")
+          + ` = ${money(projected)} of ${money(cap.amount)}`
+          + (overBy > 0 ? ` — over by ${money(overBy)}. Needs a documented, pre-approved exception.` : ` (${money(cap.amount - projected)} left).`),
+      });
+    }
+    return base;
+  }, [vendor, pathway, amount, basePrice, date, category, items, purpose, reasoning, receipts.length, payments.length, kidId, prior]);
+  const blocking = checks.filter(c => c.level === "fail").length;
+
+  const suggested = useMemo(() => draftReasoning({ ...claim, purpose }, kid),
+    [vendor, pathway, items, purpose, kidId]);
+
+  function images() {
+    return [
+      ...receipts.map(f => ({ kind: "Receipt", blob: f, name: f.name })),
+      ...payments.map(f => ({ kind: "Bank charge", blob: f, name: f.name })),
+      ...supporting.map(f => ({ kind: "Supporting doc", blob: f, name: f.name })),
+    ];
+  }
+
+  // Append new files (from the picker or the camera) instead of replacing, and
+  // de-dupe on name+size so the same photo isn't added twice.
+  function addFiles(setter, list) {
+    const incoming = Array.from(list || []);
+    setter(prev => {
+      const seen = new Set(prev.map(f => f.name + ":" + f.size));
+      return [...prev, ...incoming.filter(f => !seen.has(f.name + ":" + f.size))];
+    });
+  }
+  const removeAt = (setter, i) => setter(prev => prev.filter((_, idx) => idx !== i));
+
+  // Downscale a receipt photo in the browser so the upload stays small, then
+  // return just the base64 payload.
+  async function fileToScaledBase64(file, maxDim = 1600, quality = 0.82) {
+    const img = await new Promise((res, rej) => {
+      const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("load")); i.src = URL.createObjectURL(file);
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    const url = c.toDataURL("image/jpeg", quality);
+    URL.revokeObjectURL(img.src);
+    return url.split(",")[1];
+  }
+
+  async function scanReceipt() {
+    const file = receipts.find(f => /^image\//.test(f.type)) || receipts[0];
+    if (!file) { setScanMsg("Add a receipt photo above first."); return; }
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { setScanMsg("Scanning needs a JPG or PNG photo (PDFs can't be scanned)."); return; }
+    setScanBusy(true); setScanMsg("Reading your receipt…");
+    try {
+      const b64 = await fileToScaledBase64(file);
+      const res = await fetch("/api/scan-receipt", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageBase64: b64, mediaType: "image/jpeg" }),
+      });
+      if (res.status === 402) { setScanMsg("Receipt scanning is a Family-plan feature."); setScanBusy(false); return; }
+      const d = await res.json();
+      if (!res.ok) { setScanMsg(d.error || "Couldn't scan that — enter the details by hand."); setScanBusy(false); return; }
+      if (d.vendor) setVendor(d.vendor);
+      if (d.amount) setAmount(d.amount);
+      if (d.date) setDate(d.date);
+      if (d.items) setItems(d.items);
+      const got = [d.vendor && "store", d.amount && "amount", d.date && "date", d.items && "items"].filter(Boolean);
+      setScanMsg(got.length ? `Filled in ${got.join(", ")} — double-check everything before you submit.` : "Couldn't make out the details — enter them by hand.");
+    } catch { setScanMsg("Couldn't scan that — enter the details by hand."); }
+    setScanBusy(false);
+  }
+
+  // Vault: reusable documents for this student (or family-wide, kid_id null).
+  const vaultDocs = documents.filter(d => !d.kid_id || d.kid_id === kidId);
+  const toggleVault = (id) => setVaultPicks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  // Download the picked vault docs so they can be flattened into the packet.
+  async function vaultImages() {
+    const out = [];
+    for (const id of vaultPicks) {
+      const d = documents.find(x => x.id === id);
+      if (!d?.path) continue;
+      const { data, error } = await supabase.storage.from("documents").download(d.path);
+      if (!error && data) out.push({ kind: d.label || d.kind || "Document", blob: data, name: d.filename || d.label || "document" });
+    }
+    return out;
+  }
+
+  // --- Split reimbursement math ---------------------------------------------
+  // The current student is always part of the split.
+  const splitKids = Array.from(new Set([kidId, ...splitIds]));
+  const totalCents = Math.round((Number(amount) || 0) * 100);
+  const splitShares = (() => {
+    const list = splitKids.map(id => ({ id, name: kids.find(k => k.id === id)?.first_name || "Student" }));
+    if (splitMode === "equal") {
+      const cents = splitEqualCents(totalCents, list.length);
+      return list.map((k, i) => ({ ...k, cents: cents[i], amount: (cents[i] || 0) / 100 }));
+    }
+    return list.map(k => {
+      const c = Math.round((Number(customAmt[k.id]) || 0) * 100);
+      return { ...k, cents: c, amount: c / 100 };
+    });
+  })();
+  const splitSum = splitShares.reduce((s, k) => s + k.cents, 0);
+  const splitBalances = splitSum === totalCents;
+  const myShare = splitShares.find(s => s.id === kidId);
+
+  async function improveWithAI() {
+    setErr(""); setMsg(""); setAiBusy(true);
+    try {
+      const res = await fetch("/api/reasoning", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ claim: { ...claim, reasoning: reasoning || suggested }, kid }),
+      });
+      const data = await res.json();
+      if (data.text) { setReasoning(data.text); setMsg("Reasoning rewritten with AI."); }
+      else {
+        setReasoning(data.fallback || suggested);
+        setMsg(data.reason === "no-key"
+          ? "AI isn't set up yet (no API key) — used a smart draft instead."
+          : "AI was unavailable — used a smart draft instead.");
+      }
+    } catch (e) {
+      setReasoning(suggested);
+      setMsg("AI was unavailable — used a smart draft instead.");
+    }
+    setAiBusy(false);
+  }
+
+  function packetName(i, total) {
+    const base = `ClearClaim-${(vendor || "packet").replace(/\W+/g, "-")}-${date || "draft"}`;
+    return total > 1 ? `${base}-file${i + 1}of${total}.pdf` : `${base}.pdf`;
+  }
+
+  // Already-stored files kept on an edited claim, downloaded so they can be
+  // re-flattened into the updated packet.
+  async function keptImages() {
+    const out = [];
+    for (const f of keptFiles) {
+      if (!f?.path) continue;
+      const { data, error } = await supabase.storage.from("documents").download(f.path);
+      if (!error && data) out.push({ kind: f.kind || "Document", blob: data, name: f.name || "file" });
+    }
+    return out;
+  }
+  const removeKept = (i) => setKeptFiles(prev => prev.filter((_, idx) => idx !== i));
+
+  async function gatherImages() {
+    return [...(editing ? await keptImages() : []), ...images(), ...await vaultImages()];
+  }
+
+  // The claim(s) to produce. One per student when splitting, else just this one.
+  // Build the claim(s), each carrying its own state-correct pre-submission
+  // checks (_checks) so the packet cover shows the right state's checklist.
+  function withChecks(c) { return { ...c, _checks: runCheck(c) }; }
+  function claimVariants() {
+    const finalReasoning = reasoning || suggested;
+    if (splitOn && splitKids.length > 1) {
+      const note = buildSplitNote(Number(amount) || 0, splitShares.map(s => ({ name: s.name, amount: s.amount })), splitMode);
+      const grp = uuid();
+      return splitShares.map(s => ({
+        kid: kids.find(k => k.id === s.id),
+        claim: withChecks({
+          ...claim, kid_id: s.id, amount: s.amount,
+          base_price: (techCat && base_price && totalCents) ? Math.round(base_price * (s.cents / totalCents) * 100) / 100 : null,
+          reasoning: finalReasoning, purpose, split_group: grp, split_note: note,
+        }),
+      }));
+    }
+    return [{ kid, claim: withChecks({ ...claim, kid_id: kidId, amount: +amount, base_price, reasoning: finalReasoning, purpose, split_group: null, split_note: null }) }];
+  }
+
+  function packetNameFor(kidName, i, total) {
+    const base = `ClearClaim-${(vendor || "packet").replace(/\W+/g, "-")}-${kidName || ""}-${date || "draft"}`.replace(/-+/g, "-");
+    return total > 1 ? `${base}-file${i + 1}of${total}.pdf` : `${base}.pdf`;
+  }
+
+  async function downloadPacket() {
+    setErr(""); setMsg("");
+    if (splitOn && splitKids.length > 1 && !splitBalances) { setErr("Fix the split so the amounts add up to the receipt total."); return; }
+    const allImages = await gatherImages();
+    let files = 0;
+    for (const v of claimVariants()) {
+      const docs = await buildPacketPdfs(v.claim, v.kid, allImages);
+      docs.forEach((d, i) => d.save(packetNameFor(v.kid?.first_name, i, docs.length)));
+      files += docs.length;
+    }
+    setMsg(splitOn && splitKids.length > 1
+      ? `Built ${splitKids.length} packets — one per student, each showing the split.`
+      : (files > 1 ? `Your packet was split into ${files} files so each stays under ${platform}'s page limit. Upload all ${files} to the same submission.` : ""));
+  }
+
+  // Editing an existing saved claim: update the row in place, keep the files the
+  // parent didn't remove, upload any new ones, and rebuild the packet. No split
+  // here — an edit works on the one saved claim.
+  async function saveEdit() {
+    setErr(""); setMsg(""); setBusy(true);
+    try {
+      if (!kidId) { setErr("Pick a student."); setBusy(false); return; }
+      if (!(+amount > 0)) { setErr("Enter an amount."); setBusy(false); return; }
+      if (!category) { setErr("Pick a category."); setBusy(false); return; }
+      const finalReasoning = reasoning || suggested;
+      const { error: upErr } = await supabase.from("claims").update({
+        kid_id: kidId, vendor, pathway, amount: +amount, base_price, date: date || null,
+        category, items, purpose, reasoning: finalReasoning,
+        status: blocking ? "draft" : "ready",
+      }).eq("id", existing.id);
+      if (upErr) { setErr("Could not save changes: " + upErr.message); setBusy(false); return; }
+
+      // Upload the newly added files; keep the ones still in keptFiles.
+      const newImgs = [...images(), ...await vaultImages()];
+      const files = [...keptFiles];
+      let storeFail = false;
+      for (const im of newImgs) {
+        const path = `${userId}/${existing.id}/${Date.now()}-${im.name}`.replace(/\s+/g, "_");
+        const { error: e } = await supabase.storage.from("documents").upload(path, im.blob, { upsert: false });
+        if (!e) files.push({ path, kind: im.kind, name: im.name }); else storeFail = true;
+      }
+      await supabase.from("claims").update({ files }).eq("id", existing.id);
+
+      // Rebuild the packet from kept + new files.
+      const allImages = await gatherImages();
+      const v = withChecks({ ...claim, kid_id: kidId, amount: +amount, base_price, reasoning: finalReasoning, purpose, split_group: null, split_note: null });
+      const docs = await buildPacketPdfs(v, kid, allImages);
+      docs.forEach((d, i) => d.save(packetNameFor(kid?.first_name, i, docs.length)));
+
+      setMsg("Saved your changes and downloaded the updated packet." + (storeFail ? " (Some files couldn't be stored — check Storage policies.)" : ""));
+      router.refresh();
+      setTimeout(() => router.push("/dashboard"), 1400);
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
+    setBusy(false);
+  }
+
+  async function deleteClaim() {
+    if (!editing) return;
+    if (!window.confirm("Delete this claim? This can't be undone.")) return;
+    setBusy(true);
+    try {
+      const paths = (Array.isArray(existing.files) ? existing.files : []).map(f => f?.path).filter(Boolean);
+      if (paths.length) await supabase.storage.from("documents").remove(paths);
+    } catch { /* file cleanup is best-effort */ }
+    const { error } = await supabase.from("claims").delete().eq("id", existing.id);
+    if (error) { setErr("Could not delete: " + error.message); setBusy(false); return; }
+    router.push("/dashboard"); router.refresh();
+  }
+
+  async function saveAndBuild() {
+    if (editing) return saveEdit();
+    setErr(""); setMsg(""); setBusy(true);
+    try {
+      if (!kidId) { setErr("Pick a student."); setBusy(false); return; }
+      if (!(+amount > 0)) { setErr("Enter an amount."); setBusy(false); return; }
+      if (!category) { setErr("Pick a category."); setBusy(false); return; }
+      if (splitOn && splitKids.length > 1 && !splitBalances) { setErr("The split amounts must add up to the receipt total."); setBusy(false); return; }
+
+      const allImages = await gatherImages();
+      const variants = claimVariants();
+      let totalFiles = 0, storeFail = false;
+
+      for (const v of variants) {
+        const { data: row, error } = await supabase.from("claims").insert({
+          user_id: userId, kid_id: v.claim.kid_id, vendor, pathway,
+          amount: v.claim.amount, base_price: v.claim.base_price, date: date || null, category, items,
+          purpose, reasoning: v.claim.reasoning,
+          split_group: v.claim.split_group, split_note: v.claim.split_note,
+          status: blocking ? "draft" : "ready",
+        }).select("id").single();
+        if (error) { setErr("Could not save the claim: " + error.message); setBusy(false); return; }
+
+        // Upload supporting files (best-effort) for this student's claim.
+        const uploaded = [];
+        for (const im of allImages) {
+          const path = `${userId}/${row.id}/${Date.now()}-${im.name}`.replace(/\s+/g, "_");
+          const { error: upErr } = await supabase.storage.from("documents").upload(path, im.blob, { upsert: false });
+          if (!upErr) uploaded.push({ path, kind: im.kind, name: im.name });
+        }
+        if (uploaded.length) await supabase.from("claims").update({ files: uploaded }).eq("id", row.id);
+        if (uploaded.length < allImages.length && allImages.length > 0) storeFail = true;
+
+        const docs = await buildPacketPdfs(v.claim, v.kid, allImages);
+        docs.forEach((d, i) => d.save(packetNameFor(v.kid?.first_name, i, docs.length)));
+        totalFiles += docs.length;
+      }
+
+      const storeNote = storeFail ? " (some files couldn't be stored — check Storage policies — but the packets downloaded fine)" : "";
+      const head = variants.length > 1
+        ? `Saved ${variants.length} claims (one per student) and downloaded their packets.`
+        : "Saved and packet downloaded.";
+      const splitNote = variants.length === 1 && totalFiles > 1
+        ? ` Your packet is ${totalFiles} files, each under ${platform}'s page limit — upload all ${totalFiles} to the same submission.`
+        : "";
+      setMsg(head + splitNote + storeNote);
+      router.refresh();
+      setTimeout(() => router.push("/dashboard"), 1400);
+    } catch (e) {
+      setErr(e.message || "Something went wrong.");
+    }
+    setBusy(false);
+  }
+
+  if (!kids.length) {
+    return <div className="card"><p className="sans">Add a student first, then start a claim.</p></div>;
+  }
+
+  return (
+    <div className="card">
+      <h2>{editing ? "Edit claim" : "New claim"}</h2>
+      <p className="finenote" style={{ marginTop: -6, marginBottom: 10, background: "#f4f7fb", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }}>
+        {editing
+          ? "Make your changes and re-download the packet. Your claim is saved here and stays editable for 30 days — come back any time to add more."
+          : "Claims you save stay here and are editable for 30 days, so you can step away and come back to add more or re-download before you submit."}
+      </p>
+
+      {denialDx && denialDx.matched.length > 0 && (() => {
+        const dv = DX_STYLE[denialDx.verdict] || DX_STYLE.unclear;
+        return (
+          <div style={{ marginBottom: 12, background: dv.bg, border: `1px solid ${dv.bd}`, borderRadius: 12, padding: "12px 14px" }}>
+            <div className="sans" style={{ fontWeight: 800, color: dv.fg, fontSize: 14.5 }}>
+              {denialDx.verdict === "fixable" ? "✓ " : denialDx.verdict === "ineligible" ? "✕ " : "! "}
+              This claim was denied — {VERDICT_LABEL[denialDx.verdict]}
+            </div>
+            {existing?.outcome_reason && (
+              <p className="finenote" style={{ margin: "4px 0 8px" }}>Reviewer said: “{existing.outcome_reason}”</p>
+            )}
+            <div style={{ display: "grid", gap: 6 }}>
+              {denialDx.matched.map((m, i) => (
+                <div key={i} className="sans" style={{ fontSize: 13.5, color: "#3c4048", lineHeight: 1.5 }}>
+                  <b>{m.title}.</b> {m.fix}
+                </div>
+              ))}
+            </div>
+            {denialDx.verdict === "ineligible" && (
+              <p className="finenote" style={{ marginTop: 8 }}>Heads up: this looks like the item itself isn't reimbursable, so editing and resubmitting may not change the outcome.</p>
+            )}
+          </div>
+        );
+      })()}
+
+      <div className="row">
+        <div><label>Student</label>
+          <select value={kidId} onChange={e => setKidId(e.target.value)}>
+            {kids.map(k => <option key={k.id} value={k.id}>{k.first_name}{k.grade ? ` (grade ${k.grade})` : ""}</option>)}
+          </select>
+        </div>
+        <div><label>Pathway</label>
+          <select value={pathway} onChange={e => setPathway(e.target.value)}>
+            {pathways.map(p => <option key={p.value} value={p.value}>{p.short || p.label}</option>)}
+          </select>
+          <p className="finenote" style={{ marginTop: 4 }}>{(pathways.find(p => p.value === pathway) || {}).desc || ""}</p>
+        </div>
+      </div>
+
+      <div className="row" style={{ marginTop: 8 }}>
+        <div><label>Store / vendor</label><input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. Amazon" /></div>
+        <div><label>{pathway === "marketplace" ? "Order total" : pathway === "directpay" ? "Amount billed" : "Amount (your portion)"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="e.g. 84.20" /></div>
+        {fields.date !== false &&
+          <div><label>{pathway === "marketplace" ? "Order date" : "Date on receipt"}</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>}
+      </div>
+
+      {techCat && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <div>
+            <label>Base price for the tech cap (before tax &amp; shipping)</label>
+            <input value={basePrice} onChange={e => setBasePrice(e.target.value)} inputMode="decimal" placeholder="e.g. 799.00" />
+            <p className="finenote" style={{ marginTop: 4 }}>
+              The $1,000 technology cap counts the item's base price only — not tax or shipping. Leave blank to count the full amount above.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="row" style={{ marginTop: 8 }}>
+        <div><label>Category</label>
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            <option value="">Choose one…</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div><label>Items (comma-separated)</label><input value={items} onChange={e => setItems(e.target.value)} placeholder="e.g. Latin primer, dry-erase markers" /></div>
+      </div>
+
+      {needsStudentName && (
+        <div style={{ marginTop: 12, border: "1px solid #e7d3a6", borderRadius: 12, padding: "11px 14px", background: "#fdf7e8" }}>
+          <div className="sans" style={{ display: "grid", gridTemplateColumns: "18px 1fr", gap: 8, fontSize: 13, alignItems: "start" }}>
+            <span style={{ color: "var(--gold)", fontWeight: 700 }}>!</span>
+            <div style={{ color: "#4a4636", lineHeight: 1.5 }}>
+              <b>Put the student's name on this one.</b> For {pathway === "directpay" ? "Direct Pay" : "services and tutoring"}, families
+              report the invoice or receipt should show the student's name — enter it in the vendor's <b>"company"</b> field at checkout,
+              or ask the provider to add it to the invoice. For physical supplies you buy yourself, a receipt with your name and the
+              student's address is generally accepted.
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+                This reflects what families report, not a rule in 6 CAR Part 35. The Department makes the final call.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mileageClaim && (
+        <div style={{ marginTop: 12, border: "1px solid #cfe0d6", borderRadius: 12, padding: "11px 14px", background: "#f1f7f3" }}>
+          <div className="sans" style={{ display: "grid", gridTemplateColumns: "18px 1fr", gap: 8, fontSize: 13, alignItems: "start" }}>
+            <span aria-hidden="true">🚗</span>
+            <div style={{ color: "#33473c", lineHeight: 1.5 }}>
+              <b>Building up mileage for the month?</b> Save this claim and add each trip's receipt and your mileage log as you go —
+              it stays right here and editable for 30 days. When the month's done, reopen it, re-download the packet, and submit once.
+              {" "}<span className="muted">Remember: field-trip mileage comes out of the extracurricular cap; other approved travel uses the transportation cap.</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(fields.receipt || fields.payment) && (
+        <div className="row" style={{ marginTop: 12 }}>
+          {fields.receipt && (
+            <div>
+              <label>Receipt (photo, screenshot, or PDF)</label>
+              <FileField files={receipts} onAdd={list => addFiles(setReceipts, list)} onRemove={i => removeAt(setReceipts, i)}
+                hint="Itemized receipt showing store, date, items, payment method. PDFs and multi-page files are fine — we flatten them for you." />
+              {receipts.some(f => /^image\//.test(f.type)) && (
+                <div style={{ marginTop: 6 }}>
+                  <button type="button" className="sans" style={{ fontSize: 13 }} disabled={scanBusy} onClick={scanReceipt}>
+                    {scanBusy ? "Scanning…" : "✨ Scan receipt to fill the fields"}
+                  </button>
+                  {scanMsg && <p className="finenote" style={{ marginTop: 4, color: /double-check|Filled/.test(scanMsg) ? "var(--teal)" : "var(--muted)" }}>{scanMsg}</p>}
+                </div>
+              )}
+            </div>
+          )}
+          {fields.payment && (
+            <div>
+              <label>Bank / card charge (photo, screenshot, or PDF)</label>
+              <FileField files={payments} onAdd={list => addFiles(setPayments, list)} onRemove={i => removeAt(setPayments, i)}
+                hint="Single transaction showing amount, date, merchant. Required for PayPal." />
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: 12 }}>
+        <label>Other supporting documents (optional)</label>
+        <FileField files={supporting} onAdd={list => addFiles(setSupporting, list)} onRemove={i => removeAt(setSupporting, i)}
+          hint="Anything else the reviewer needs — proof of enrollment or lesson participation, the curriculum/course, an enrollment letter, a pre-approval, or a mileage log. Screenshot or download it and add it here; it's flattened into the same packet." />
+      </div>
+
+      {/* Attach from your vault: reusable docs (annual pre-approval, diagnosis, etc.) */}
+      {editing && keptFiles.length > 0 && (
+        <div style={{ marginTop: 12, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+          <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Already attached</div>
+          <p className="finenote" style={{ marginTop: 2, marginBottom: 8 }}>
+            These files are saved on this claim and will be included in the packet. Remove any you don't want, or add more above.
+          </p>
+          <div style={{ display: "grid", gap: 6 }}>
+            {keptFiles.map((f, i) => (
+              <div key={i} className="sans" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5 }}>
+                <span style={{ flex: 1, minWidth: 0 }}><b>{f.name || "file"}</b>{f.kind ? <span className="muted"> · {f.kind}</span> : null}</span>
+                <button type="button" className="sans" style={{ fontSize: 12, color: "var(--red)", borderColor: "#e3b7b3" }} onClick={() => removeKept(i)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {vaultDocs.length > 0 && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+          <div className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Attach from your vault</div>
+          <p className="finenote" style={{ marginTop: 2, marginBottom: 8 }}>
+            Add saved documents to this packet — like the annual non-vendor pre-approval you re-attach every month.
+            They're flattened into the packet along with your receipt. Manage files in <a href="/dashboard/documents" style={{ color: "var(--navy2)" }}>Documents</a>.
+          </p>
+          <div style={{ display: "grid", gap: 6 }}>
+            {vaultDocs.map(d => (
+              <label key={d.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={vaultPicks.includes(d.id)} onChange={() => toggleVault(d.id)} style={{ width: 16, height: 16 }} />
+                <span><b>{d.label || d.filename || "Document"}</b>{d.kind ? <span className="muted"> · {d.kind}</span> : null}{!d.kid_id ? <span className="muted"> · family</span> : null}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Split reimbursement across funded students (Arkansas-style caps only). Not shown when editing a saved claim. */}
+      {!editing && features.splitReimbursement && kids.length > 1 && pathway !== "directpay" && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+          <label className="sans" style={{ display: "flex", alignItems: "center", gap: 9, fontWeight: 700, fontSize: 13, color: "var(--navy)", cursor: "pointer" }}>
+            <input type="checkbox" checked={splitOn} onChange={e => { setSplitOn(e.target.checked); if (e.target.checked && !splitIds.length) setSplitIds([kidId]); }} style={{ width: 16, height: 16 }} />
+            Split this receipt across students
+          </label>
+          <p className="finenote" style={{ marginTop: 4, marginBottom: splitOn ? 10 : 0 }}>
+            Required for one-per-family items — a gym membership, a household printer, a chicken coop, a shared garden bed.
+            Each student gets their own submission showing the math, with the same receipt attached.
+          </p>
+          {splitOn && (
+            <>
+              <div className="sans" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Students sharing this receipt</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+                {kids.map(k => {
+                  const on = splitKids.includes(k.id);
+                  const isCurrent = k.id === kidId;
+                  return (
+                    <label key={k.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, cursor: isCurrent ? "default" : "pointer", opacity: isCurrent ? 0.7 : 1 }}>
+                      <input type="checkbox" checked={on} disabled={isCurrent}
+                        onChange={() => setSplitIds(prev => {
+                          const base = new Set(prev.length ? prev : [kidId]);
+                          on ? base.delete(k.id) : base.add(k.id); base.add(kidId);
+                          return Array.from(base);
+                        })} style={{ width: 15, height: 15 }} />
+                      {k.first_name}{isCurrent ? " (this claim)" : ""}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="sans" style={{ display: "flex", gap: 16, fontSize: 13, marginBottom: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input type="radio" name="splitmode" checked={splitMode === "equal"} onChange={() => setSplitMode("equal")} /> Equal split
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input type="radio" name="splitmode" checked={splitMode === "custom"} onChange={() => setSplitMode("custom")} /> Custom amounts
+                </label>
+              </div>
+              <div style={{ display: "grid", gap: 5 }}>
+                {splitShares.map(s => (
+                  <div key={s.id} className="sans" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <span style={{ flex: 1 }}>{s.name}</span>
+                    {splitMode === "custom"
+                      ? <input value={customAmt[s.id] ?? ""} onChange={e => setCustomAmt(p => ({ ...p, [s.id]: e.target.value }))}
+                          inputMode="decimal" placeholder="0.00" style={{ width: 100, textAlign: "right" }} />
+                      : <span style={{ fontWeight: 700 }}>{money(s.amount)}</span>}
+                  </div>
+                ))}
+              </div>
+              <div className="sans" style={{ fontSize: 12.5, marginTop: 8, color: splitBalances ? "var(--teal)" : "var(--red)", fontWeight: 700 }}>
+                {splitBalances
+                  ? `✓ Splits add up to ${money(amount)}. This claim files ${money(myShare?.amount || 0)} for ${kids.find(k=>k.id===kidId)?.first_name}.`
+                  : `Splits total ${money(splitSum / 100)} — must equal the receipt total ${money(amount)}.`}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: 14 }}>
+        <label>Educational-use reasoning</label>
+        <textarea rows={3} value={reasoning} onChange={e => setReasoning(e.target.value)}
+          placeholder="How this student uses these items in their classes." />
+        <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="button" className="sans" onClick={() => setReasoning(suggested)}>Use suggested wording</button>
+          {premium
+            ? <button type="button" className="sans" onClick={improveWithAI} disabled={aiBusy}
+                style={{ borderColor: "var(--navy2)", color: "var(--navy2)" }}>
+                {aiBusy ? "Thinking…" : "✨ Improve with AI"}
+              </button>
+            : <a href="/upgrade" className="sans" style={{ display: "inline-block", fontSize: 15, padding: "10px 16px", borderRadius: 11, border: "1px solid var(--line)", color: "var(--muted)", fontWeight: 600 }}>🔒 Improve with AI (Family plan)</a>}
+          <span className="muted sans" style={{ fontSize: 12.5, flex: 1, minWidth: 180 }}>
+            Suggestion: “{suggested.slice(0, 80)}{suggested.length > 80 ? "…" : ""}”
+          </span>
+        </div>
+        <p className="finenote">
+          This draft is yours. Give it a read and adjust anything to fit your student before you submit.
+          The wording follows published program guidance, and final approval is the reviewer's call.
+        </p>
+      </div>
+
+      {/* Running budget for capped categories */}
+      {cap && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px",
+          background: overBy > 0 ? "#fbeeee" : "#f4f8f6" }}>
+          <div className="sans" style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+            <b style={{ color: "var(--navy)" }}>{cap.label}</b>
+            <span className="muted">budget year {by.label}</span>
+            <span className="spacer" style={{ flex: 1 }} />
+            <span style={{ fontWeight: 700, color: overBy > 0 ? "var(--red)" : "var(--teal)" }}>
+              {money(projected)} / {money(cap.amount)}
+            </span>
+          </div>
+          <div style={{ height: 10, background: "#e7ecf1", borderRadius: 6, overflow: "hidden", margin: "8px 0 6px" }}>
+            <div style={{ width: `${Math.min(100, (prior / cap.amount) * 100)}%`, height: "100%", background: "var(--navy2)", float: "left" }} />
+            <div style={{ width: `${Math.min(100 - (prior / cap.amount) * 100, (amt / cap.amount) * 100)}%`, height: "100%",
+              background: overBy > 0 ? "var(--red)" : "var(--gold)", float: "left" }} />
+          </div>
+          <div className="muted sans" style={{ fontSize: 12.5 }}>
+            {money(prior)} already claimed for this student this year · this claim {money(amt)}
+            {overBy > 0
+              ? ` · over the cap by ${money(overBy)} — get a documented exception first.`
+              : ` · ${money(cap.amount - projected)} left.`}
+          </div>
+        </div>
+      )}
+
+      {/* Utah cap running budget (percentage of the student's award) */}
+      {utCap && utCap.amount > 0 && (
+        <div style={{ marginTop: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px",
+          background: utProjected > utCap.amount ? "#fbeeee" : "#f4f8f6" }}>
+          <div className="sans" style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 13 }}>
+            <b style={{ color: "var(--navy)" }}>{utCap.label} cap</b>
+            <span className="muted">{utKey === "transportation" ? "$750/year" : "20% of award"}</span>
+            <span className="spacer" style={{ flex: 1 }} />
+            <span style={{ fontWeight: 700, color: utProjected > utCap.amount ? "var(--red)" : "var(--teal)" }}>
+              {money(utProjected)} / {money(utCap.amount)}
+            </span>
+          </div>
+          <div style={{ height: 10, background: "#e7ecf1", borderRadius: 6, overflow: "hidden", margin: "8px 0 6px" }}>
+            <div style={{ width: `${Math.min(100, (utProjected / utCap.amount) * 100)}%`, height: "100%", background: utProjected > utCap.amount ? "var(--red)" : "var(--navy2)" }} />
+          </div>
+          <div className="muted sans" style={{ fontSize: 12.5 }}>
+            {money(utPrior)} already used this year · this claim {money(amt)}
+            {utProjected > utCap.amount ? ` · over by ${money(utProjected - utCap.amount)}.` : ` · ${money(utCap.amount - utProjected)} left.`}
+          </div>
+        </div>
+      )}
+      {utKey && (!utCap || utCap.amount === 0) && utKey !== "transportation" && (
+        <p className="finenote" style={{ marginTop: 8 }}>Set this student's award amount in Settings to track the 20% {utKey === "physicalEd" ? "physical-education" : "extracurricular"} cap.</p>
+      )}
+
+      {/* Live rules check */}
+      <div style={{ marginTop: 16, border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", background: "#fbfaf7" }}>
+        <div className="sans" style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, color: "var(--navy)" }}>
+          Pre-submission check {blocking ? `· ${blocking} to fix` : "· looks ready"}
+        </div>
+        <div className="sans" style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <span><span style={{ color: DOT.fail, fontWeight: 700 }}>✗</span> must fix before submitting</span>
+          <span><span style={{ color: DOT.warn, fontWeight: 700 }}>!</span> recommended</span>
+        </div>
+        <div style={{ display: "grid", gap: 6 }}>
+          {checks.map((c, i) => (
+            <div key={i} className="sans" style={{ display: "grid", gridTemplateColumns: "14px 1fr", gap: 8, fontSize: 13 }}>
+              <span style={{ color: DOT[c.level], fontWeight: 700 }}>{c.level === "fail" ? "✗" : c.level === "warn" ? "!" : "✓"}</span>
+              <span style={{ color: "#3c4048" }}>{c.msg}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {err && <p style={{ color: "var(--red)", fontSize: 13 }}>{err}</p>}
+      {msg && (/split into|upload all|each under/i.test(msg)
+        ? (
+          <p className="sans" style={{
+            color: "var(--red)", fontSize: 15.5, fontWeight: 700, lineHeight: 1.45, marginTop: 10,
+            background: "#fbeeee", border: "1px solid #e3b7b3", borderRadius: 10, padding: "11px 13px",
+          }}>⚠️ {msg}</p>
+        )
+        : <p style={{ color: "var(--teal)", fontSize: 13 }}>{msg}</p>
+      )}
+
+      {blocking > 0 &&
+        <p className="sans" style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 12, marginBottom: -4 }}>
+          With {blocking} item{blocking > 1 ? "s" : ""} still to fix, this saves as a <b>draft</b> — finish the ✗ items above to mark it ready to submit.
+        </p>}
+      <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+        <button className="primary" disabled={busy} onClick={saveAndBuild}>
+          {busy ? "Working…" : blocking ? "Save draft & download" : (editing ? "Save changes & download packet" : "Save claim & download packet")}
+        </button>
+        <button type="button" disabled={busy} onClick={downloadPacket}>Download packet only</button>
+        {editing && <button type="button" disabled={busy} onClick={deleteClaim} style={{ color: "var(--red)", borderColor: "#e3b7b3" }}>Delete claim</button>}
+        <button type="button" onClick={() => router.push("/dashboard")} style={{ marginLeft: "auto" }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
