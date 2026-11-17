@@ -266,6 +266,7 @@ export default async function Dashboard() {
             <Link href="/dashboard/devices"><button>Devices & plans</button></Link>
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
             <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
+            {stateConfig?.code === "AR" && <Link href="/dashboard/mileage"><button>Mileage log</button></Link>}
             <Link href="/dashboard/submit-steps"><button>How to submit on {stateConfig?.platform || "your program's portal"}</button></Link>
             {feat.vendorDirectory && <Link href="/dashboard/vendors"><button>Find a vendor</button></Link>}
             {feat.denialFixer && <Link href="/dashboard/fix"><button>Fix a denied claim</button></Link>}

@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-11-11-scan-onboard-pulse",
-    note: "Notifications (#1) + error-handling loop (#2) + automated feature-request capture (#3, clustered, weekly digest, /admin/requests). Plus Cash App fix, branded share links, staff directory, price guide, admin Usage card.",
+    version: "2026-11-17-mileage-log",
+    note: "Mileage Log tool (/dashboard/mileage): manual trip entry + import the state's .xlsx Travel Reimbursement Request Form, totals at $0.52/mile, exports an image PDF/JPEG that gets around ClassWallet's 'imageType undefined' OCR error. Ann updated. Plus receipt scanning, onboarding, admin weekly pulse, branded share links.",
     served_at: new Date().toISOString(),
   });
 }
