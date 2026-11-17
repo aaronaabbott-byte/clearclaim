@@ -187,9 +187,9 @@ export default async function Dashboard() {
               <Link href="/dashboard/mileage"><button className="primary">Open mileage log</button></Link>
             </div>
             <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
-              Track your EFA travel and export an <b>upload-ready file for ClassWallet</b> — at $0.52/mile. The state's
-              Excel sheet often fails the uploader with an “imageType” error; this exports a picture of the same form that
-              uploads cleanly. Already filled out the state's sheet? Import it and we'll pull your trips in.
+              Track your EFA travel and export an <b>upload-ready PDF or JPEG for ClassWallet</b> — at $0.52/mile. The state's
+              Excel sheet (and PDFs of it) fail the uploader with an “imageType” error; this builds the same form in a format
+              that uploads cleanly. Already filled out the state's sheet? Import it and we'll pull your trips in.
             </p>
           </div>
         )}

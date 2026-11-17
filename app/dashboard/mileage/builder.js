@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { jsPDF } from "jspdf";
 import { MILEAGE_RATE, mileageTotals, buildMileageSvg } from "@/lib/mileage";
+import { buildMileagePdf } from "@/lib/mileage-pdf";
 
 const money = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 const DRAFT_KEY = "cc_mileage_draft_v1";
@@ -95,19 +95,17 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
     }
   }
 
-  async function downloadImagePdf() {
+  const fileBase = () => `Mileage-Log-${(studentName || "student").replace(/\W+/g, "-")}-${date || "draft"}`;
+
+  async function downloadPdf() {
     setErr(""); setMsg("");
     if (!cleanTrips.length) { setErr("Add at least one trip first."); return; }
     setBusy(true);
     try {
-      const { url, w, h } = await svgToJpeg(svg(), 2);
-      // A single-page PDF whose only content is the rasterized JPEG — a familiar
-      // format that still passes ClassWallet's image OCR.
-      const pdf = new jsPDF({ orientation: w >= h ? "landscape" : "portrait", unit: "pt", format: [w, h] });
-      pdf.addImage(url, "JPEG", 0, 0, w, h);
-      pdf.save(`Mileage-Log-${(studentName || "student").replace(/\W+/g, "-")}-${date || "draft"}.pdf`);
-      setMsg("Downloaded your mileage log as an image PDF — upload this to ClassWallet. It's a picture of the form, so the uploader reads it fine.");
-    } catch { setErr("Couldn't build the PDF — try the JPEG option."); }
+      const doc = buildMileagePdf({ studentName, date, trips: cleanTrips });
+      doc.save(`${fileBase()}.pdf`);
+      setMsg("Downloaded your mileage log as a PDF — upload this to ClassWallet. It's built in the format the uploader accepts (not the state's Excel/PDF export, which it rejects).");
+    } catch { setErr("Couldn't build the PDF — try the JPEG option below."); }
     setBusy(false);
   }
 
@@ -119,9 +117,9 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
       const { url } = await svgToJpeg(svg(), 2);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Mileage-Log-${(studentName || "student").replace(/\W+/g, "-")}-${date || "draft"}.jpg`;
+      a.download = `${fileBase()}.jpg`;
       a.click();
-      setMsg("Downloaded your mileage log as a JPEG — upload this to ClassWallet if the PDF ever gives you trouble.");
+      setMsg("Downloaded your mileage log as a JPEG — upload this to ClassWallet the same way you'd attach a receipt photo. (Either the PDF or this JPEG uploads cleanly.)");
     } catch { setErr("Couldn't build the image — try again."); }
     setBusy(false);
   }
@@ -166,8 +164,8 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
       <h2>Mileage log</h2>
       <p className="finenote" style={{ marginTop: -6, marginBottom: 12, background: "#f4f7fb", border: "1px solid var(--line)", borderRadius: 8, padding: "9px 11px" }}>
         Track your EFA travel here and export an upload-ready file for ClassWallet. Enter each trip's start and end address and
-        tap <b>Calculate miles</b> to look up the driving distance — or type it yourself. The state's Excel sheet often fails the
-        uploader; this exports a <b>picture of the same form</b> (an image PDF or JPEG), which the uploader reads without the error.
+        tap <b>Calculate miles</b> to look up the driving distance — or type it yourself. The state's Excel sheet (and PDF versions
+        of it) fail the uploader; this builds the same form as a <b>PDF or JPEG that ClassWallet accepts</b>, getting around the error.
         Reimbursed at <b>{money(MILEAGE_RATE)}/mile</b>. Your log saves on this device as you go.
       </p>
 
@@ -257,15 +255,16 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
       {msg && <p style={{ color: "var(--teal)", fontSize: 13.5 }}>{msg}</p>}
 
       <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-        <button className="primary" disabled={busy} onClick={downloadImagePdf}>
+        <button className="primary" disabled={busy} onClick={downloadPdf}>
           {busy ? "Building…" : "Download upload-ready PDF"}
         </button>
         <button type="button" disabled={busy} onClick={downloadJpeg}>Download as JPEG instead</button>
         <button type="button" onClick={clearAll} style={{ marginLeft: "auto", color: "var(--muted)" }}>Clear</button>
       </div>
       <p className="finenote" style={{ marginTop: 10 }}>
-        Upload the file to ClassWallet the same way you'd attach a receipt. If the PDF is ever rejected, use the JPEG —
-        both are a picture of your log, which is what gets around the “imageType” upload error.
+        Both the PDF and the JPEG upload cleanly to ClassWallet — attach either one the same way you'd attach a receipt.
+        ClassWallet rejects the state's own Excel/PDF export with the “imageType” error; the file this tool builds is made in
+        a format the uploader accepts, which is what gets around it.
       </p>
     </div>
   );

@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-11-17-mileage-address-calc",
-    note: "Mileage Log (/dashboard/mileage): manual trip entry, import the state's .xlsx form, and now Calculate miles from start/end addresses via Google Distance Matrix (needs GOOGLE_MAPS_API_KEY). Totals at $0.52/mile, exports an image PDF/JPEG that beats ClassWallet's 'imageType undefined' OCR error. Prominent dashboard card + quick-action. Stacked (no-cutoff) trip cards. Ann updated.",
+    version: "2026-11-17-mileage-pdf-jpeg",
+    note: "Mileage Log (/dashboard/mileage): manual trip entry, import the state's .xlsx form, Calculate miles from addresses via Google Routes API (needs GOOGLE_MAPS_API_KEY + Routes API). Totals at $0.52/mile. Exports a VECTOR PDF (jsPDF, PDF 1.3) OR a JPEG — both confirmed to pass ClassWallet's uploader (the imageType error is caused by the state's PDF 1.7 export, which its OCR can't parse). Prominent dashboard card + quick-action, stacked trip cards. Ann updated.",
     served_at: new Date().toISOString(),
   });
 }
