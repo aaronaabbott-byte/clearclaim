@@ -36,6 +36,7 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
+  const [calc, setCalc] = useState({}); // { [tripIndex]: { busy, msg, ok } }
   const loaded = useRef(false);
 
   // Restore a draft so a parent can build the log across several sittings.
@@ -68,6 +69,30 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
 
   function svg() {
     return buildMileageSvg({ studentName, date, trips: cleanTrips });
+  }
+
+  // Look up the driving distance between this trip's two addresses (Google) and
+  // fill in the Miles field — doubled when it's a round trip. Always editable.
+  async function calcMiles(i) {
+    const t = trips[i];
+    const start = (t.startAddr || "").trim(), end = (t.endAddr || "").trim();
+    if (!start || !end) { setCalc(c => ({ ...c, [i]: { busy: false, msg: "Add both addresses first.", ok: false } })); return; }
+    setCalc(c => ({ ...c, [i]: { busy: true, msg: "Looking up the distance…", ok: false } }));
+    try {
+      const res = await fetch("/api/trip-distance", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ start, end }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setCalc(c => ({ ...c, [i]: { busy: false, msg: d.error || "Couldn't look that up — type the miles in.", ok: false } })); return; }
+      const oneWay = Number(d.miles) || 0;
+      const total = t.roundTrip ? Math.round(oneWay * 2 * 10) / 10 : oneWay;
+      setTrip(i, "miles", String(total));
+      setCalc(c => ({ ...c, [i]: { busy: false, ok: true,
+        msg: t.roundTrip ? `${oneWay} mi each way → ${total} mi round trip. Double-check it looks right.` : `${total} mi driving. Double-check it looks right.` } }));
+    } catch {
+      setCalc(c => ({ ...c, [i]: { busy: false, msg: "Lookup failed — type the miles in.", ok: false } }));
+    }
   }
 
   async function downloadImagePdf() {
@@ -133,15 +158,16 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
   }
 
-  const cell = { fontSize: 13, padding: "6px 7px" };
-  const th = { fontSize: 11.5, fontWeight: 700, color: "var(--navy)", textAlign: "left", padding: "4px 7px", whiteSpace: "nowrap" };
+  const fl = { display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--muted)", marginBottom: 3 };
+  const inp = { width: "100%", boxSizing: "border-box" };
 
   return (
     <div className="card">
       <h2>Mileage log</h2>
       <p className="finenote" style={{ marginTop: -6, marginBottom: 12, background: "#f4f7fb", border: "1px solid var(--line)", borderRadius: 8, padding: "9px 11px" }}>
-        Track your EFA travel here and export an upload-ready file for ClassWallet. The state's Excel sheet often fails the
-        uploader — this exports a <b>picture of the same form</b> (an image PDF or JPEG), which the uploader reads without the error.
+        Track your EFA travel here and export an upload-ready file for ClassWallet. Enter each trip's start and end address and
+        tap <b>Calculate miles</b> to look up the driving distance — or type it yourself. The state's Excel sheet often fails the
+        uploader; this exports a <b>picture of the same form</b> (an image PDF or JPEG), which the uploader reads without the error.
         Reimbursed at <b>{money(MILEAGE_RATE)}/mile</b>. Your log saves on this device as you go.
       </p>
 
@@ -171,35 +197,39 @@ export default function MileageBuilder({ students = [], defaultStudent = "" }) {
         <div><label>Date of request</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
       </div>
 
-      <div style={{ marginTop: 14, overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid var(--line)" }}>
-              <th style={th}>Date of trip</th>
-              <th style={th}>Start — name</th>
-              <th style={th}>Start — address</th>
-              <th style={th}>End — name</th>
-              <th style={th}>End — address</th>
-              <th style={{ ...th, textAlign: "center" }}>Round trip?</th>
-              <th style={{ ...th, textAlign: "right" }}>Miles (GPS)</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {trips.map((t, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid var(--line)" }}>
-                <td style={cell}><input type="date" value={t.date} onChange={e => setTrip(i, "date", e.target.value)} style={{ width: 140 }} /></td>
-                <td style={cell}><input value={t.startName} onChange={e => setTrip(i, "startName", e.target.value)} placeholder="Home" style={{ width: 120 }} /></td>
-                <td style={cell}><input value={t.startAddr} onChange={e => setTrip(i, "startAddr", e.target.value)} placeholder="123 Main St" style={{ width: 170 }} /></td>
-                <td style={cell}><input value={t.endName} onChange={e => setTrip(i, "endName", e.target.value)} placeholder="Co-op" style={{ width: 120 }} /></td>
-                <td style={cell}><input value={t.endAddr} onChange={e => setTrip(i, "endAddr", e.target.value)} placeholder="456 Oak Ave" style={{ width: 170 }} /></td>
-                <td style={{ ...cell, textAlign: "center" }}><input type="checkbox" checked={!!t.roundTrip} onChange={e => setTrip(i, "roundTrip", e.target.checked)} style={{ width: 16, height: 16 }} /></td>
-                <td style={{ ...cell, textAlign: "right" }}><input value={t.miles} onChange={e => setTrip(i, "miles", e.target.value)} inputMode="decimal" placeholder="0" style={{ width: 70, textAlign: "right" }} /></td>
-                <td style={cell}><button type="button" onClick={() => removeRow(i)} title="Remove trip" style={{ color: "var(--red)", borderColor: "#e3b7b3", padding: "2px 8px", fontSize: 12 }}>✕</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* One card per trip — fields wrap to the screen width so nothing is cut
+          off (families are often on a phone). */}
+      <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+        {trips.map((t, i) => (
+          <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", background: "#fcfcfb" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span className="sans" style={{ fontWeight: 700, fontSize: 13, color: "var(--navy)" }}>Trip {i + 1}</span>
+              <span className="spacer" style={{ flex: 1 }} />
+              <label className="sans" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={!!t.roundTrip} onChange={e => setTrip(i, "roundTrip", e.target.checked)} style={{ width: 16, height: 16 }} />
+                Round trip
+              </label>
+              <button type="button" onClick={() => removeRow(i)} title="Remove trip" style={{ color: "var(--red)", borderColor: "#e3b7b3", padding: "3px 10px", fontSize: 12 }}>Remove</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+              <div><label style={fl}>Date of trip</label><input type="date" value={t.date} onChange={e => setTrip(i, "date", e.target.value)} style={inp} /></div>
+              <div><label style={fl}>Miles (GPS)</label><input value={t.miles} onChange={e => setTrip(i, "miles", e.target.value)} inputMode="decimal" placeholder="0" style={inp} /></div>
+              <div><label style={fl}>Start — name</label><input value={t.startName} onChange={e => setTrip(i, "startName", e.target.value)} placeholder="Home" style={inp} /></div>
+              <div><label style={fl}>Start — address</label><input value={t.startAddr} onChange={e => setTrip(i, "startAddr", e.target.value)} placeholder="123 Main St" style={inp} /></div>
+              <div><label style={fl}>End — name</label><input value={t.endName} onChange={e => setTrip(i, "endName", e.target.value)} placeholder="Co-op" style={inp} /></div>
+              <div><label style={fl}>End — address</label><input value={t.endAddr} onChange={e => setTrip(i, "endAddr", e.target.value)} placeholder="456 Oak Ave" style={inp} /></div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+              <button type="button" className="sans" style={{ fontSize: 13, borderColor: "var(--navy2)", color: "var(--navy2)" }}
+                disabled={!t.startAddr || !t.endAddr || calc[i]?.busy} onClick={() => calcMiles(i)}>
+                {calc[i]?.busy ? "Calculating…" : "📍 Calculate miles from addresses"}
+              </button>
+              {calc[i]?.msg && (
+                <span className="finenote" style={{ color: calc[i]?.ok ? "var(--teal)" : "var(--muted)" }}>{calc[i].msg}</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>

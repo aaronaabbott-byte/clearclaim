@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-11-17-mileage-log",
-    note: "Mileage Log tool (/dashboard/mileage): manual trip entry + import the state's .xlsx Travel Reimbursement Request Form, totals at $0.52/mile, exports an image PDF/JPEG that gets around ClassWallet's 'imageType undefined' OCR error. Ann updated. Plus receipt scanning, onboarding, admin weekly pulse, branded share links.",
+    version: "2026-11-17-mileage-address-calc",
+    note: "Mileage Log (/dashboard/mileage): manual trip entry, import the state's .xlsx form, and now Calculate miles from start/end addresses via Google Distance Matrix (needs GOOGLE_MAPS_API_KEY). Totals at $0.52/mile, exports an image PDF/JPEG that beats ClassWallet's 'imageType undefined' OCR error. Prominent dashboard card + quick-action. Stacked (no-cutoff) trip cards. Ann updated.",
     served_at: new Date().toISOString(),
   });
 }

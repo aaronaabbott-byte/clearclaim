@@ -102,6 +102,7 @@ export default async function Dashboard() {
           <div style={{ display: "inline-flex", width: "max-content", border: "1px solid var(--navy)", borderRadius: 5, overflow: "hidden" }}>
             {[
               { label: "Start a claim", href: "/dashboard/claims/new", show: true },
+              { label: "Mileage log", href: "/dashboard/mileage", show: stateConfig?.code === "AR" },
               { label: "Check eligibility", href: "/dashboard/eligibility", show: !!feat.coreNonCore },
               { label: "Pre-approvals", href: "/dashboard/preapproval/new", show: !!feat.preapprovalTool },
               { label: "Documents", href: "/dashboard/documents", show: true },
@@ -176,6 +177,21 @@ export default async function Dashboard() {
             </div>
           )}
         </div>
+        )}
+
+        {stateConfig?.code === "AR" && (
+          <div className="card" style={{ borderLeft: "4px solid var(--navy2)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0 }}>🚗 Mileage log</h2>
+              <span className="spacer" style={{ flex: 1 }} />
+              <Link href="/dashboard/mileage"><button className="primary">Open mileage log</button></Link>
+            </div>
+            <p className="muted sans" style={{ fontSize: 14, marginTop: 10 }}>
+              Track your EFA travel and export an <b>upload-ready file for ClassWallet</b> — at $0.52/mile. The state's
+              Excel sheet often fails the uploader with an “imageType” error; this exports a picture of the same form that
+              uploads cleanly. Already filled out the state's sheet? Import it and we'll pull your trips in.
+            </p>
+          </div>
         )}
 
         <div className="card">
@@ -266,7 +282,6 @@ export default async function Dashboard() {
             <Link href="/dashboard/devices"><button>Devices & plans</button></Link>
             <Link href="/dashboard/annotate"><button>Annotate an image</button></Link>
             <Link href="/dashboard/redact"><button>Redact a statement</button></Link>
-            {stateConfig?.code === "AR" && <Link href="/dashboard/mileage"><button>Mileage log</button></Link>}
             <Link href="/dashboard/submit-steps"><button>How to submit on {stateConfig?.platform || "your program's portal"}</button></Link>
             {feat.vendorDirectory && <Link href="/dashboard/vendors"><button>Find a vendor</button></Link>}
             {feat.denialFixer && <Link href="/dashboard/fix"><button>Fix a denied claim</button></Link>}
