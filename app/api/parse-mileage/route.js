@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logError } from "@/lib/errors";
-import * as XLSX from "xlsx";
+import { readFirstSheet } from "@/lib/xlsx-lite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,35 +26,40 @@ export async function POST(request) {
 
   try {
     const buf = Buffer.from(b64, "base64");
-    const wb = XLSX.read(buf, { type: "buffer" });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    if (!ws) return NextResponse.json({ error: "That sheet looks empty." }, { status: 422 });
-
+    // Column A (trip dates) and B4 (current date) hold Excel date serials; tell
+    // the reader to convert those positions to YYYY-MM-DD.
+    const cells = readFirstSheet(buf, { dateCols: ["A"], dateCells: ["B4"] });
     const cell = (addr) => {
-      const c = ws[addr];
-      return c == null ? "" : String(c.w ?? c.v ?? "").trim();
+      const v = cells[addr];
+      return v == null ? "" : String(v).trim();
     };
     const truthy = (v) => /^(y|yes|true|x|1|✓)/i.test(String(v).trim());
 
     const studentName = cell("B3");
     const date = cell("B4");
 
+    const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
+    // Scan the whole trip area rather than stopping at the first blank row, and
+    // keep only rows that look like a real trip — so stray zeros, gaps, or a
+    // lone leftover value don't become junk rows. Stop after a long blank run.
     const trips = [];
+    let blankRun = 0;
     for (let r = 7; r <= 500; r++) {
       const d = cell(`A${r}`);
       const startName = cell(`B${r}`);
-      const miles = cell(`G${r}`);
-      // Stop once we hit a fully blank trip row.
-      if (!d && !startName && !miles) break;
-      if (!d && !startName && !cell(`D${r}`) && !miles) continue;
+      const endName = cell(`D${r}`);
+      const miles = Number(String(cell(`G${r}`)).replace(/[^0-9.]/g, "")) || 0;
+      const real = (isDate(d) || startName || endName) && (miles > 0 || startName || endName);
+      if (!real) { if (++blankRun >= 15) break; continue; }
+      blankRun = 0;
       trips.push({
-        date: d,
+        date: isDate(d) ? d : "",
         startName,
         startAddr: cell(`C${r}`),
-        endName: cell(`D${r}`),
+        endName,
         endAddr: cell(`E${r}`),
         roundTrip: truthy(cell(`F${r}`)),
-        miles: Number(String(miles).replace(/[^0-9.]/g, "")) || 0,
+        miles,
       });
     }
 
