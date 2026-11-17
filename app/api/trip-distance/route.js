@@ -18,7 +18,7 @@ export async function POST(request) {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const key = process.env.GOOGLE_MAPS_API_KEY;
-  if (!key) return NextResponse.json({ error: "Address lookup isn't set up on this server yet." }, { status: 503 });
+  if (!key) return NextResponse.json({ error: "No GOOGLE_MAPS_API_KEY on the server — add it in Vercel and redeploy." }, { status: 503 });
 
   const body = await request.json().catch(() => ({}));
   const start = String(body?.start || "").trim().slice(0, 300);
@@ -33,8 +33,11 @@ export async function POST(request) {
     if (!r.ok) return NextResponse.json({ error: "Lookup failed — type the miles in by hand." }, { status: 502 });
     const j = await r.json();
     if (j.status !== "OK") {
-      // REQUEST_DENIED usually means the key/billing/API isn't configured.
-      return NextResponse.json({ error: j.status === "REQUEST_DENIED" ? "Address lookup isn't set up on this server yet." : "Couldn't look that up — type the miles in by hand." }, { status: 502 });
+      // Surface Google's own reason so setup problems are diagnosable on-screen.
+      // REQUEST_DENIED = key/billing/API-not-enabled or a key restriction (e.g. an
+      // HTTP-referrer restriction blocks server calls — use None or IP instead).
+      const detail = j.error_message ? ` (${j.error_message})` : "";
+      return NextResponse.json({ error: `Google rejected the lookup: ${j.status}${detail}` }, { status: 502 });
     }
     const el = j?.rows?.[0]?.elements?.[0];
     if (!el || el.status !== "OK" || !el.distance?.value) {
