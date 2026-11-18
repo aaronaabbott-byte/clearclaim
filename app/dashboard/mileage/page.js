@@ -12,10 +12,11 @@ export default async function MileagePage() {
   if (!user) redirect("/login");
   const { data: prof } = await supabase.from("profiles").select("state").eq("user_id", user.id).single();
   const cfg = getStateConfig(prof?.state);
-  const { data: kids } = await supabase.from("kids").select("first_name,last_name")
+  const { data: kids } = await supabase.from("kids").select("id,first_name,last_name,funding_tier")
     .order("sort_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true });
-  const students = (kids || []).map(k => [k.first_name, k.last_name].filter(Boolean).join(" ")).filter(Boolean);
+  // Existing claims feed the per-student travel-cap bar.
+  const { data: claims } = await supabase.from("claims").select("id,kid_id,category,amount,base_price,date,created_at,miles");
 
   return (
     <>
@@ -26,7 +27,7 @@ export default async function MileagePage() {
       </header>
       <main>
         {cfg.code === "AR" ? (
-          <MileageBuilder students={students} defaultStudent={students[0] || ""} />
+          <MileageBuilder kids={kids || []} claims={claims || []} userId={user.id} />
         ) : (
           <div className="card">
             <h2>Mileage log</h2>

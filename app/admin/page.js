@@ -51,7 +51,7 @@ export default async function Admin() {
     { data: classes }, { data: invoices }, { data: syllabi }, { data: pItems },
     { data: ents }, { data: codes }, { data: documents }, { data: devices }] = await Promise.all([
     admin.from("kids").select("user_id,created_at"),
-    admin.from("claims").select("user_id,created_at,status,outcome"),
+    admin.from("claims").select("user_id,created_at,status,outcome,miles,amount,date"),
     admin.from("preapprovals").select("user_id,created_at"),
     admin.from("profiles").select("user_id,is_parent,is_provider,state"),
     admin.from("classes").select("user_id"),
@@ -75,6 +75,18 @@ export default async function Admin() {
   const openIssues = (clusters || []).length;
   const csatN = (csat || []).length;
   const csatAvg = csatN ? ((csat || []).reduce((s, r) => s + (r.score || 0), 0) / csatN) : 0;
+
+  // Mileage adoption: claims created by the Mileage Log carry a `miles` value.
+  const mileageClaims = (claims || []).filter(c => Number(c.miles) > 0);
+  const milesAll = mileageClaims.reduce((s, c) => s + (Number(c.miles) || 0), 0);
+  const reimbAll = mileageClaims.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const mileageMonth = mileageClaims.filter(c => (c.date || String(c.created_at || "").slice(0, 10)) >= monthAgo);
+  const milesMonth = mileageMonth.reduce((s, c) => s + (Number(c.miles) || 0), 0);
+  const reimbMonth = mileageMonth.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const mileageFamilies = new Set(mileageClaims.map(c => c.user_id)).size;
+  const miFmt = (n) => Math.round(n).toLocaleString();
+  const usdFmt = (n) => `$${(Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   const entMap = {};
   for (const e of ents || []) entMap[e.user_id] = e;
@@ -198,6 +210,31 @@ export default async function Admin() {
               <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4 }}>{csatN} response{csatN === 1 ? "" : "s"}</div>
             </div>
           </Link>
+        </div>
+      </div>
+
+      {/* Mileage logged — adoption + impact of the Mileage Log tool. */}
+      <div className="card">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h2 style={{ margin: 0 }}>🚗 Mileage logged</h2>
+          <span className="muted sans" style={{ fontSize: 13 }}>travel claims built in ClearClaim</span>
+        </div>
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+          <div className="kid" style={{ display: "block" }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--navy)" }}>{miFmt(milesAll)}</div>
+            <div className="muted sans" style={{ fontSize: 12.5 }}>total miles logged</div>
+            <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4 }}>{miFmt(milesMonth)} in the last 30 days</div>
+          </div>
+          <div className="kid" style={{ display: "block" }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--navy)" }}>{usdFmt(reimbAll)}</div>
+            <div className="muted sans" style={{ fontSize: 12.5 }}>reimbursement claimed</div>
+            <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4 }}>{usdFmt(reimbMonth)} in the last 30 days</div>
+          </div>
+          <div className="kid" style={{ display: "block" }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--navy)" }}>{mileageFamilies}</div>
+            <div className="muted sans" style={{ fontSize: 12.5 }}>families using it</div>
+            <div className="sans" style={{ fontSize: 12, color: "#45506a", marginTop: 4 }}>{mileageClaims.length} mileage claim{mileageClaims.length === 1 ? "" : "s"}</div>
+          </div>
         </div>
       </div>
 

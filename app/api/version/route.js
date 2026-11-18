@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    version: "2026-11-17-mileage-pdf-jpeg",
-    note: "Mileage Log (/dashboard/mileage): manual trip entry, import the state's .xlsx form, Calculate miles from addresses via Google Routes API (needs GOOGLE_MAPS_API_KEY + Routes API). Totals at $0.52/mile. Exports a VECTOR PDF (jsPDF, PDF 1.3) OR a JPEG — both confirmed to pass ClassWallet's uploader (the imageType error is caused by the state's PDF 1.7 export, which its OCR can't parse). Prominent dashboard card + quick-action, stacked trip cards. Ann updated.",
+    version: "2026-11-17-mileage-caps",
+    note: "Mileage Log now saves as a per-student travel claim (Transportation, or Extracurricular for field trips) so it counts against the student's 25% cap — with a live cap bar in the tool. Needs migration: supabase/mileage-claim-migration.sql (adds claims.miles, claims.mileage_trips). Admin dashboard gets a 'Mileage logged' card (total miles + reimbursement + families, 30-day + all-time). Still: import state .xlsx, Google Routes address lookup, vector PDF 1.3 / JPEG export that passes ClassWallet.",
     served_at: new Date().toISOString(),
   });
 }
